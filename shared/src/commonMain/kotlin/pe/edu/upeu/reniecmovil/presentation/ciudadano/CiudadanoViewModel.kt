@@ -28,6 +28,8 @@ data class FormularioCiudadano(
     val ubigeo: String = "150118 - LIMA / LIMA / LURIGANCHO-CHOSICA",
     val direccion: String = "",
     val donacionOrganos: Boolean = true,
+    val huellaCapturada: Boolean = true,
+    val dedoSeleccionado: String = "Índice Derecho",
     val dniError: String? = null,
     val nombresError: String? = null,
     val paternoError: String? = null,
@@ -61,7 +63,8 @@ data class CiudadanoUiState(
                 val coincideTexto = q.isBlank() ||
                     c.dni.lowercase().contains(q) ||
                     c.nombreCompleto.lowercase().contains(q) ||
-                    c.ubigeo.lowercase().contains(q)
+                    c.ubigeo.lowercase().contains(q) ||
+                    c.codigoHuellaAfis.lowercase().contains(q)
                 coincideDep && coincideTexto
             }
         }
@@ -127,6 +130,18 @@ class CiudadanoViewModel(
         _uiState.update { it.copy(ciudadanoSeleccionado = ciudadano, mensajeExito = null) }
     }
 
+    fun buscarPorHuellaBiometrica(ciudadano: Ciudadano) {
+        _uiState.update {
+            it.copy(
+                filtroDepartamento = "TODOS",
+                filtroDniONombre = ciudadano.dni,
+                ciudadanoSeleccionado = ciudadano,
+                mensajeExito = "Huella AFIS (${ciudadano.codigoHuellaAfis}) identificada: ${ciudadano.nombreCompleto} - DNI ${ciudadano.dni}",
+                mensajeError = null
+            )
+        }
+    }
+
     fun consultarDniExacto() {
         val dni = _uiState.value.filtroDniONombre.trim()
         viewModelScope.launch {
@@ -158,7 +173,7 @@ class CiudadanoViewModel(
             it.copy(
                 editandoId = null,
                 mostrarFormulario = true,
-                formulario = FormularioCiudadano(),
+                formulario = FormularioCiudadano(huellaCapturada = false),
                 mensajeExito = null,
                 mensajeError = null
             )
@@ -179,7 +194,8 @@ class CiudadanoViewModel(
                     estadoCivil = ciudadano.estadoCivil,
                     ubigeo = ciudadano.ubigeo,
                     direccion = ciudadano.direccion,
-                    donacionOrganos = ciudadano.donacionOrganos
+                    donacionOrganos = ciudadano.donacionOrganos,
+                    huellaCapturada = true
                 ),
                 mensajeExito = null,
                 mensajeError = null
@@ -234,7 +250,7 @@ class CiudadanoViewModel(
                             editandoId = null,
                             ciudadanoSeleccionado = guardado,
                             formulario = FormularioCiudadano(),
-                            mensajeExito = "Ciudadano ${guardado.nombreCompleto} (DNI ${guardado.dni}) guardado en Ubigeo ${guardado.ubigeo}"
+                            mensajeExito = "Ciudadano ${guardado.nombreCompleto} (DNI ${guardado.dni}) registrado con Huella ${guardado.codigoHuellaAfis}"
                         )
                     }
                 },
