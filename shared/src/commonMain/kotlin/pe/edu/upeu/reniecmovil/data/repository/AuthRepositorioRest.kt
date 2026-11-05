@@ -26,40 +26,80 @@ class AuthRepositorioRest(
             val dto: LoginResponseDto = cliente.post("auth/login") {
                 setBody(LoginRequestDto(credenciales.usuario, credenciales.clave))
             }.body()
-            almacen.guardarToken(dto.token)
+            almacen.guardarToken("${dto.username}|${dto.token}")
             cliente.authProvider<BearerAuthProvider>()?.clearToken()
             dto.aSesion()
         } catch (e: ClientRequestException) {
             throw IllegalArgumentException("Usuario o contraseña institucional inválidos")
         } catch (e: Exception) {
-            // Fallback en Modo Brigada Offline cuando el celular arranca sin señal pero usa credenciales institucionales válidas
-            if ((credenciales.usuario.equals("admin", ignoreCase = true) && credenciales.clave == "Admin123!") ||
-                (credenciales.usuario.equals("dolton", ignoreCase = true) && credenciales.clave == "Reniec2026!")
-            ) {
-                val tokenOffline = "jwt-offline-brigada-reniec-2026"
-                almacen.guardarToken(tokenOffline)
-                Sesion(
-                    token = tokenOffline,
-                    usuario = credenciales.usuario,
-                    nombreCompleto = "Registrador Dolton Tom Meza (Modo Brigada Offline)",
-                    cargo = "Registrador Civil RENIEC",
-                    sede = "Brigada Móvil UPeU - Ñaña",
-                    permisos = setOf("PADRON_LEER", "PADRON_ESCRIBIR", "TRAMITES_LEER", "TRAMITES_ESCRIBIR")
+            // Fallback Offline-First para cualquiera de los 3 roles institucionales
+            val u = credenciales.usuario.trim().lowercase()
+            val c = credenciales.clave.trim()
+            val sesionOffline = when {
+                u == "admin" && c == "Admin123!" -> Sesion(
+                    token = "jwt-offline-admin-2026",
+                    usuario = "admin",
+                    nombreCompleto = "Ing. Carlos Mendoza (Administrador RENIEC)",
+                    cargo = "Jefe de Registro Civil - Control Total",
+                    sede = "Sede Central RENIEC Lima",
+                    permisos = setOf(
+                        "ROLE_ADMIN",
+                        "PADRON_LEER",
+                        "PADRON_ESCRIBIR",
+                        "PADRON_ELIMINAR",
+                        "TRAMITES_LEER",
+                        "TRAMITES_ESCRIBIR",
+                        "TRAMITES_APROBAR",
+                        "TRAMITES_ELIMINAR",
+                        "RECAUDACION_VER"
+                    )
                 )
-            } else {
-                throw IllegalArgumentException("Sin conexión al servidor y credenciales no coinciden con brigadista autorizado")
-            }
+                u == "dolton" && c == "Reniec2026!" -> Sesion(
+                    token = "jwt-offline-brigadista-2026",
+                    usuario = "dolton",
+                    nombreCompleto = "Brigadista Dolton Tom Meza",
+                    cargo = "Brigadista de Campo (Offline/Online)",
+                    sede = "Brigada Móvil UPeU - Ñaña",
+                    permisos = setOf(
+                        "ROLE_BRIGADISTA",
+                        "PADRON_LEER",
+                        "PADRON_ESCRIBIR",
+                        "TRAMITES_LEER",
+                        "TRAMITES_ESCRIBIR"
+                    )
+                )
+                u == "verificador" && c == "Verifica2026!" -> Sesion(
+                    token = "jwt-offline-verificador-2026",
+                    usuario = "verificador",
+                    nombreCompleto = "Lic. Ana Torres (Módulo Consulta)",
+                    cargo = "Verificador Biométrico AFIS y Ventanilla",
+                    sede = "Agencia RENIEC Ate - Vitarte",
+                    permisos = setOf(
+                        "ROLE_VERIFICADOR",
+                        "PADRON_LEER",
+                        "TRAMITES_LEER"
+                    )
+                )
+                else -> null
+            } ?: throw IllegalArgumentException("Credenciales no autorizadas para acceso RENIEC")
+
+            almacen.guardarToken("${sesionOffline.usuario}|${sesionOffline.token}")
+            sesionOffline
         }
     }
 
     override suspend fun sesionGuardada(): Sesion? {
-        val token = almacen.leerToken() ?: return null
+        val raw = almacen.leerToken() ?: return null
+        val partes = raw.split("|", limit = 2)
+        val usuarioGuardado = if (partes.size == 2) partes[0] else "admin"
+        val tokenPuro = if (partes.size == 2) partes[1] else raw
+
         return try {
             val dto: UsuarioResponseDto = cliente.get("auth/me").body()
             Sesion(
-                token = token,
+                token = tokenPuro,
                 usuario = dto.username,
-                nombreCompleto = dto.empleadoNombre ?: "Registrador Dolton Tom Meza",
+                nombreCompleto = dto.empleadoNombre ?: "Registrador RENIEC",
                 cargo = dto.cargo,
                 sede = dto.sede,
                 permisos = dto.permisos.toSet()
@@ -68,14 +108,42 @@ class AuthRepositorioRest(
             almacen.borrarToken()
             null
         } catch (_: Exception) {
-            Sesion(
-                token = token,
-                usuario = "admin",
-                nombreCompleto = "Registrador Dolton Tom Meza (Sesión Offline)",
-                cargo = "Registrador Civil RENIEC",
-                sede = "Brigada Móvil UPeU - Ñaña",
-                permisos = setOf("PADRON_LEER", "PADRON_ESCRIBIR", "TRAMITES_LEER", "TRAMITES_ESCRIBIR")
-            )
+            when (usuarioGuardado.lowercase()) {
+                "dolton" -> Sesion(
+                    token = tokenPuro,
+                    usuario = "dolton",
+                    nombreCompleto = "Brigadista Dolton Tom Meza (Offline)",
+                    cargo = "Brigadista de Campo (Offline/Online)",
+                    sede = "Brigada Móvil UPeU - Ñaña",
+                    permisos = setOf("ROLE_BRIGADISTA", "PADRON_LEER", "PADRON_ESCRIBIR", "TRAMITES_LEER", "TRAMITES_ESCRIBIR")
+                )
+                "verificador" -> Sesion(
+                    token = tokenPuro,
+                    usuario = "verificador",
+                    nombreCompleto = "Lic. Ana Torres (Módulo Consulta)",
+                    cargo = "Verificador Biométrico AFIS y Ventanilla",
+                    sede = "Agencia RENIEC Ate - Vitarte",
+                    permisos = setOf("ROLE_VERIFICADOR", "PADRON_LEER", "TRAMITES_LEER")
+                )
+                else -> Sesion(
+                    token = tokenPuro,
+                    usuario = "admin",
+                    nombreCompleto = "Ing. Carlos Mendoza (Admin Offline)",
+                    cargo = "Jefe de Registro Civil - Control Total",
+                    sede = "Sede Central RENIEC Lima",
+                    permisos = setOf(
+                        "ROLE_ADMIN",
+                        "PADRON_LEER",
+                        "PADRON_ESCRIBIR",
+                        "PADRON_ELIMINAR",
+                        "TRAMITES_LEER",
+                        "TRAMITES_ESCRIBIR",
+                        "TRAMITES_APROBAR",
+                        "TRAMITES_ELIMINAR",
+                        "RECAUDACION_VER"
+                    )
+                )
+            }
         }
     }
 

@@ -44,15 +44,17 @@ public class AuthController {
                 .map(GrantedAuthority::getAuthority)
                 .toList();
 
+        PerfilMetadata meta = obtenerMetadata(user.getUsername());
+
         LoginResponseDTO response = LoginResponseDTO.builder()
                 .token(token)
                 .tipo("Bearer")
                 .expiraEnSegundos(jwtService.getExpiracionSegundos())
                 .username(user.getUsername())
-                .nombreCompleto("Registrador Dolton Tom Meza")
-                .cargo("Registrador Civil RENIEC")
-                .sede("Brigada Movil UPeU - Nana")
-                .roles(List.of("ROLE_ADMIN"))
+                .nombreCompleto(meta.nombreCompleto)
+                .cargo(meta.cargo)
+                .sede(meta.sede)
+                .roles(List.of(meta.rol))
                 .permisos(permisos)
                 .build();
 
@@ -65,13 +67,46 @@ public class AuthController {
                 .map(GrantedAuthority::getAuthority)
                 .toList();
 
+        PerfilMetadata meta = obtenerMetadata(authentication.getName());
+
         UsuarioResponseDTO dto = UsuarioResponseDTO.builder()
                 .username(authentication.getName())
-                .empleadoNombre("Registrador Dolton Tom Meza")
-                .cargo("Registrador Civil RENIEC")
-                .sede("Brigada Movil UPeU - Nana")
+                .empleadoNombre(meta.nombreCompleto)
+                .cargo(meta.cargo)
+                .sede(meta.sede)
                 .permisos(permisos)
                 .build();
         return ResponseEntity.ok(dto);
     }
+
+    private PerfilMetadata obtenerMetadata(String username) {
+        String u = username == null ? "" : username.toLowerCase();
+        return switch (u) {
+            case "admin" -> new PerfilMetadata(
+                    "Ing. Carlos Mendoza (Administrador RENIEC)",
+                    "Jefe de Registro Civil - Control Total",
+                    "Sede Central RENIEC Lima",
+                    "ROLE_ADMIN"
+            );
+            case "dolton" -> new PerfilMetadata(
+                    "Brigadista Dolton Tom Meza",
+                    "Brigadista de Campo (Offline/Online)",
+                    "Brigada Movil UPeU - Nana",
+                    "ROLE_BRIGADISTA"
+            );
+            default -> new PerfilMetadata(
+                    "Lic. Ana Torres (Modulo Consulta)",
+                    "Verificador Biometrico AFIS y Ventanilla",
+                    "Agencia RENIEC Ate - Vitarte",
+                    "ROLE_VERIFICADOR"
+            );
+        };
+    }
+
+    private record PerfilMetadata(
+            String nombreCompleto,
+            String cargo,
+            String sede,
+            String rol
+    ) {}
 }

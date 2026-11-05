@@ -64,6 +64,9 @@ fun InicioScreen(
     val atendidos = tramites.count { it.estado == EstadoTramiteDni.ATENDIDO.name }
     val tasaRecaudada = tramites.sumOf { TipoTramiteDni.desdeTexto(it.tipoTramite).costoSoles }
 
+    val puedeVerRecaudacion = sesion.puede("RECAUDACION_VER") || sesion.puede("ROLE_ADMIN")
+    val puedeRegistrarTramite = sesion.puede("TRAMITES_ESCRIBIR")
+
     val progresoAtencion by animateFloatAsState(
         targetValue = if (tramites.isEmpty()) 0f else atendidos.toFloat() / tramites.size.toFloat()
     )
@@ -75,7 +78,6 @@ fun InicioScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // Banner de estado de red Online / Offline-First
         Surface(
             color = if (avisoRed == null) {
                 MaterialTheme.colorScheme.secondaryContainer
@@ -129,7 +131,6 @@ fun InicioScreen(
             }
         }
 
-        // Tarjeta de bienvenida del Registrador
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
             shape = RoundedCornerShape(16.dp),
@@ -144,7 +145,7 @@ fun InicioScreen(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Bienvenido, ${sesion.nombreCompleto}",
+                        text = sesion.nombreCompleto,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.ExtraBold,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -155,12 +156,21 @@ fun InicioScreen(
                         color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f)
                     )
                     Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = "Recaudación Tasa Banco de la Nación: S/ ${tasaRecaudada}0",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                    if (puedeVerRecaudacion) {
+                        Text(
+                            text = "Recaudación Tasa Banco de la Nación: S/ ${tasaRecaudada}0",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    } else {
+                        Text(
+                            text = "Modo Operativo: ${if (puedeRegistrarTramite) "Registro y Sincronización" else "Solo Consulta y Verificación AFIS"}",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.secondary
+                        )
+                    }
                 }
                 Surface(
                     shape = CircleShape,
@@ -175,7 +185,6 @@ fun InicioScreen(
             }
         }
 
-        // Cuadrícula de métricas
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -212,7 +221,6 @@ fun InicioScreen(
             )
         }
 
-        // Panel gráfico de avance de campaña y distribución por tipo de trámite
         ElevatedCard(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp)
@@ -283,7 +291,11 @@ fun InicioScreen(
                                 style = MaterialTheme.typography.bodySmall
                             )
                             Text(
-                                text = "$cantidad solic. (S/ ${tipo.costoSoles.toInt()})",
+                                text = if (puedeVerRecaudacion) {
+                                    "$cantidad solic. (S/ ${tipo.costoSoles.toInt()})"
+                                } else {
+                                    "$cantidad solic."
+                                },
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold
                             )
@@ -307,7 +319,6 @@ fun InicioScreen(
             }
         }
 
-        // Botones de acción rápida
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -321,14 +332,16 @@ fun InicioScreen(
                 Spacer(modifier = Modifier.size(6.dp))
                 Text("Padrón DNIe")
             }
-            FilledTonalButton(
-                onClick = onNuevoTramite,
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Icon(Icons.Default.PostAdd, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.size(6.dp))
-                Text("Nuevo Trámite")
+            if (puedeRegistrarTramite) {
+                FilledTonalButton(
+                    onClick = onNuevoTramite,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Default.PostAdd, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.size(6.dp))
+                    Text("Nuevo Trámite")
+                }
             }
         }
 

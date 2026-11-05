@@ -1,6 +1,7 @@
 package pe.edu.upeu.reniecmovil.presentation.sesion
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,7 +17,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.Badge
+import androidx.compose.material.icons.filled.Engineering
+import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.VerifiedUser
@@ -24,6 +28,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -34,10 +39,19 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+
+private data class RolDemoReniec(
+    val tituloRol: String,
+    val usuario: String,
+    val clave: String,
+    val alcance: String,
+    val icono: ImageVector
+)
 
 @Composable
 fun LoginScreen(
@@ -46,11 +60,35 @@ fun LoginScreen(
 ) {
     val estado by viewModel.estado.collectAsState()
 
+    val rolesDisponibles = listOf(
+        RolDemoReniec(
+            tituloRol = "1. Administrador / Jefe Registro Civil",
+            usuario = "admin",
+            clave = "Admin123!",
+            alcance = "Acceso Total: Crear, Editar, Aprobar/Atender, Eliminar y Recaudación",
+            icono = Icons.Default.AdminPanelSettings
+        ),
+        RolDemoReniec(
+            tituloRol = "2. Brigadista de Campo (Offline/Online)",
+            usuario = "dolton",
+            clave = "Reniec2026!",
+            alcance = "Empadrona y crea trámites offline/online (Borrado de padrón protegido)",
+            icono = Icons.Default.Engineering
+        ),
+        RolDemoReniec(
+            tituloRol = "3. Módulo de Consulta / Verificador AFIS",
+            usuario = "verificador",
+            clave = "Verifica2026!",
+            alcance = "Solo busca DNIs, gira DNIe 3.0, pasa huella AFIS y consulta etapa de trámite",
+            icono = Icons.Default.Fingerprint
+        )
+    )
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .padding(20.dp),
+            .padding(16.dp),
         contentAlignment = Alignment.Center
     ) {
         Card(
@@ -64,21 +102,21 @@ fun LoginScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(24.dp),
+                    .padding(22.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(14.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Surface(
                     shape = CircleShape,
                     color = MaterialTheme.colorScheme.primaryContainer,
-                    modifier = Modifier.size(72.dp)
+                    modifier = Modifier.size(68.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             imageVector = Icons.Default.Badge,
                             contentDescription = "Logo RENIEC",
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(40.dp)
+                            modifier = Modifier.size(38.dp)
                         )
                     }
                 }
@@ -96,18 +134,16 @@ fun LoginScreen(
                     fontWeight = FontWeight.ExtraBold
                 )
                 Text(
-                    text = "Sistema Multiplataforma de Brigadas e Identificación Ciudadana (Offline-First)",
-                    style = MaterialTheme.typography.bodyMedium,
+                    text = "Control de Acceso Basado en Roles (RBAC + JWT) y Operación Offline-First",
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
                 )
 
-                Spacer(modifier = Modifier.height(6.dp))
-
                 OutlinedTextField(
                     value = estado.usuario,
                     onValueChange = viewModel::onUsuarioChange,
-                    label = { Text("Usuario / Código Registrador") },
+                    label = { Text("Usuario Institucional") },
                     leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -116,7 +152,7 @@ fun LoginScreen(
                 OutlinedTextField(
                     value = estado.clave,
                     onValueChange = viewModel::onClaveChange,
-                    label = { Text("Contraseña Institucional") },
+                    label = { Text("Contraseña") },
                     leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
                     visualTransformation = PasswordVisualTransformation(),
                     singleLine = true,
@@ -155,34 +191,66 @@ fun LoginScreen(
                     } else {
                         Icon(Icons.Default.VerifiedUser, contentDescription = null)
                         Spacer(modifier = Modifier.size(8.dp))
-                        Text("AUTENTICAR CON JWT", fontWeight = FontWeight.Bold)
+                        Text("INGRESAR AL SISTEMA (JWT)", fontWeight = FontWeight.Bold)
                     }
                 }
 
-                Surface(
-                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text(
-                            text = "Credenciales de Brigadista RENIEC:",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                Text(
+                    text = "Selecciona un Perfil para Autocompletar Credenciales:",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                rolesDisponibles.forEach { rol ->
+                    val seleccionado = estado.usuario.equals(rol.usuario, ignoreCase = true)
+                    Surface(
+                        color = if (seleccionado) {
+                            MaterialTheme.colorScheme.primaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                viewModel.onUsuarioChange(rol.usuario)
+                                viewModel.onClaveChange(rol.clave)
+                            }
+                    ) {
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            Text(
-                                text = "Usuario: admin",
-                                style = MaterialTheme.typography.bodySmall
+                            Icon(
+                                imageVector = rol.icono,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(26.dp)
                             )
-                            Text(
-                                text = "Clave: Admin123!",
-                                style = MaterialTheme.typography.bodySmall
-                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = rol.tituloRol,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "Usuario: ${rol.usuario}  |  Clave: ${rol.clave}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = rol.alcance,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
                 }
