@@ -88,7 +88,7 @@ dependencies {
     androidRuntimeClasspath(libs.compose.uiTooling)
 }
 
-tasks.matching { it.name.contains("AarMetadata") }.configureEach {
+tasks.matching { it.name.startsWith("check") && it.name.endsWith("AarMetadata") }.configureEach {
     enabled = false
 }
 

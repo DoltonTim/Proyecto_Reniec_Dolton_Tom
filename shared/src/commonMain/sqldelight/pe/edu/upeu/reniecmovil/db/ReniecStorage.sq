@@ -1,0 +1,77 @@
+CREATE TABLE ciudadano_local (
+    id                INTEGER NOT NULL PRIMARY KEY,
+    dni               TEXT    NOT NULL,
+    nombres           TEXT    NOT NULL,
+    apellidoPaterno   TEXT    NOT NULL,
+    apellidoMaterno   TEXT    NOT NULL,
+    fechaNacimiento   TEXT    NOT NULL,
+    estadoCivil       TEXT    NOT NULL,
+    ubigeo            TEXT    NOT NULL,
+    direccion         TEXT    NOT NULL,
+    donacionOrganos   INTEGER NOT NULL DEFAULT 1,
+    pendiente         INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE tramite_local (
+    id                INTEGER NOT NULL PRIMARY KEY,
+    dniCiudadano      TEXT    NOT NULL,
+    nombreCiudadano   TEXT    NOT NULL,
+    tipoTramite       TEXT    NOT NULL,
+    estado            TEXT    NOT NULL,
+    ubigeoDestino     TEXT    NOT NULL,
+    observaciones     TEXT    NOT NULL,
+    fechaRegistro     TEXT    NOT NULL,
+    pendiente         INTEGER NOT NULL DEFAULT 0
+);
+
+listarCiudadanos:
+SELECT * FROM ciudadano_local ORDER BY apellidoPaterno ASC, nombres ASC;
+
+buscarCiudadanoPorDni:
+SELECT * FROM ciudadano_local WHERE dni = ? LIMIT 1;
+
+listarCiudadanosPendientes:
+SELECT * FROM ciudadano_local WHERE pendiente = 1;
+
+insertarCiudadano:
+INSERT OR REPLACE INTO ciudadano_local(
+    id, dni, nombres, apellidoPaterno, apellidoMaterno,
+    fechaNacimiento, estadoCivil, ubigeo, direccion,
+    donacionOrganos, pendiente
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+eliminarCiudadanoPorId:
+DELETE FROM ciudadano_local WHERE id = ?;
+
+borrarCiudadanosSincronizados:
+DELETE FROM ciudadano_local WHERE pendiente = 0;
+
+siguienteIdCiudadanoLocal:
+SELECT COALESCE(MIN(id), 0) FROM ciudadano_local;
+
+contarCiudadanos:
+SELECT COUNT(*) FROM ciudadano_local;
+
+listarTramites:
+SELECT * FROM tramite_local ORDER BY id DESC;
+
+listarTramitesPendientes:
+SELECT * FROM tramite_local WHERE pendiente = 1;
+
+insertarTramite:
+INSERT OR REPLACE INTO tramite_local(
+    id, dniCiudadano, nombreCiudadano, tipoTramite,
+    estado, ubigeoDestino, observaciones, fechaRegistro, pendiente
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+eliminarTramitePorId:
+DELETE FROM tramite_local WHERE id = ?;
+
+borrarTramitesSincronizados:
+DELETE FROM tramite_local WHERE pendiente = 0;
+
+siguienteIdTramiteLocal:
+SELECT COALESCE(MIN(id), 0) FROM tramite_local;
+
+contarTramites:
+SELECT COUNT(*) FROM tramite_local;
