@@ -1,5 +1,6 @@
 package pe.edu.upeu.reniecmovil.data.remote.dto
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import pe.edu.upeu.reniecmovil.domain.model.Ciudadano
 import pe.edu.upeu.reniecmovil.domain.model.Sesion
@@ -47,12 +48,17 @@ data class CiudadanoDto(
     val id: Long = 0L,
     val dni: String,
     val nombres: String,
+    @SerialName("apellido_paterno")
     val apellidoPaterno: String,
+    @SerialName("apellido_materno")
     val apellidoMaterno: String,
+    @SerialName("fecha_nacimiento")
     val fechaNacimiento: String,
+    @SerialName("estado_civil")
     val estadoCivil: String,
     val ubigeo: String,
     val direccion: String,
+    @SerialName("donacion_organos")
     val donacionOrganos: Boolean = true
 ) {
     fun toDomain(pendienteSync: Boolean = false): Ciudadano = Ciudadano(
@@ -70,8 +76,25 @@ data class CiudadanoDto(
     )
 }
 
-fun Ciudadano.toDto(): CiudadanoDto = CiudadanoDto(
-    id = if (id > 0) id else 0L,
+@Serializable
+data class CiudadanoPayloadDto(
+    val dni: String,
+    val nombres: String,
+    @SerialName("apellido_paterno")
+    val apellidoPaterno: String,
+    @SerialName("apellido_materno")
+    val apellidoMaterno: String,
+    @SerialName("fecha_nacimiento")
+    val fechaNacimiento: String,
+    @SerialName("estado_civil")
+    val estadoCivil: String,
+    val ubigeo: String,
+    val direccion: String,
+    @SerialName("donacion_organos")
+    val donacionOrganos: Boolean = true
+)
+
+fun Ciudadano.toPayloadDto(): CiudadanoPayloadDto = CiudadanoPayloadDto(
     dni = dni,
     nombres = nombres,
     apellidoPaterno = apellidoPaterno,
@@ -86,13 +109,18 @@ fun Ciudadano.toDto(): CiudadanoDto = CiudadanoDto(
 @Serializable
 data class TramiteDto(
     val id: Long = 0L,
+    @SerialName("dni_ciudadano")
     val dniCiudadano: String,
+    @SerialName("nombre_ciudadano")
     val nombreCiudadano: String,
+    @SerialName("tipo_tramite")
     val tipoTramite: String,
     val estado: String,
+    @SerialName("ubigeo_destino")
     val ubigeoDestino: String,
     val observaciones: String,
-    val fechaRegistro: String = "2026-11-04"
+    @SerialName("fecha_registro")
+    val fechaRegistro: String = "2026-11-05"
 ) {
     fun toDomain(pendienteSync: Boolean = false): TramiteDni = TramiteDni(
         id = id,
@@ -107,8 +135,23 @@ data class TramiteDto(
     )
 }
 
-fun TramiteDni.toDto(): TramiteDto = TramiteDto(
-    id = if (id > 0) id else 0L,
+@Serializable
+data class TramitePayloadDto(
+    @SerialName("dni_ciudadano")
+    val dniCiudadano: String,
+    @SerialName("nombre_ciudadano")
+    val nombreCiudadano: String,
+    @SerialName("tipo_tramite")
+    val tipoTramite: String,
+    val estado: String,
+    @SerialName("ubigeo_destino")
+    val ubigeoDestino: String,
+    val observaciones: String,
+    @SerialName("fecha_registro")
+    val fechaRegistro: String = "2026-11-05"
+)
+
+fun TramiteDni.toPayloadDto(): TramitePayloadDto = TramitePayloadDto(
     dniCiudadano = dniCiudadano,
     nombreCiudadano = nombreCiudadano,
     tipoTramite = tipoTramite,
