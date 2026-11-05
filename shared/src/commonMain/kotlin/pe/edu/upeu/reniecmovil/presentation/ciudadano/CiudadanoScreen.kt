@@ -1,6 +1,5 @@
 package pe.edu.upeu.reniecmovil.presentation.ciudadano
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,6 +22,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.FlipCameraAndroid
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PostAdd
@@ -60,15 +60,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import pe.edu.upeu.reniecmovil.domain.model.Ciudadano
 import pe.edu.upeu.reniecmovil.domain.model.EstadoCivil
+import pe.edu.upeu.reniecmovil.domain.model.Sesion
 
 @Composable
 fun CiudadanoScreen(
     viewModel: CiudadanoViewModel,
+    sesion: Sesion,
     onIniciarTramiteParaCiudadano: (Ciudadano) -> Unit
 ) {
     val state by viewModel.uiState.collectAsState()
     var ciudadanoParaAfis by remember { mutableStateOf<Ciudadano?>(null) }
     var ciudadanoParaEliminar by remember { mutableStateOf<Ciudadano?>(null) }
+
+    val puedeEscribirPadron = sesion.puede("PADRON_ESCRIBIR")
+    val puedeEliminarPadron = sesion.puede("PADRON_ELIMINAR") || sesion.puede("ROLE_ADMIN")
+    val puedeCrearTramite = sesion.puede("TRAMITES_ESCRIBIR")
 
     ciudadanoParaAfis?.let { c ->
         DialogoVerificacionBiometricaAfis(
@@ -121,15 +127,23 @@ fun CiudadanoScreen(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "DNIe 3.0 Interactivo (Anverso/Reverso) y Validación Biométrica AFIS",
+                        text = if (puedeEliminarPadron) {
+                            "Perfil Admin: Control total de padrón y depuración habilitada"
+                        } else if (puedeEscribirPadron) {
+                            "Perfil Brigadista: Empadronamiento activo (Borrado protegido)"
+                        } else {
+                            "Módulo Consulta: Solo búsqueda DNIe 3.0 y validación AFIS"
+                        },
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
-                Button(onClick = viewModel::abrirNuevoCiudadano) {
-                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.size(4.dp))
-                    Text("Empadronar")
+                if (puedeEscribirPadron) {
+                    Button(onClick = viewModel::abrirNuevoCiudadano) {
+                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.size(4.dp))
+                        Text("Empadronar")
+                    }
                 }
             }
         }
@@ -191,7 +205,7 @@ fun CiudadanoScreen(
             }
         }
 
-        if (state.mostrarFormulario) {
+        if (state.mostrarFormulario && puedeEscribirPadron) {
             item {
                 FormularioCiudadanoCard(
                     esEdicion = state.editandoId != null,
@@ -208,6 +222,8 @@ fun CiudadanoScreen(
             item {
                 TarjetaDniElectronicoInteractivo(
                     ciudadano = seleccionado,
+                    puedeCrearTramite = puedeCrearTramite,
+                    puedeEditar = puedeEscribirPadron,
                     onIniciarTramite = { onIniciarTramiteParaCiudadano(seleccionado) },
                     onVerificarHuella = { ciudadanoParaAfis = seleccionado },
                     onEditar = { viewModel.iniciarEdicion(seleccionado) }
@@ -248,7 +264,7 @@ fun CiudadanoScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    Row {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         IconButton(onClick = { ciudadanoParaAfis = ciudadano }) {
                             Icon(
                                 Icons.Default.Fingerprint,
@@ -256,14 +272,27 @@ fun CiudadanoScreen(
                                 tint = MaterialTheme.colorScheme.primary
                             )
                         }
-                        IconButton(onClick = { viewModel.iniciarEdicion(ciudadano) }) {
-                            Icon(Icons.Default.Edit, contentDescription = "Editar")
+                        if (puedeEscribirPadron) {
+                            IconButton(onClick = { viewModel.iniciarEdicion(ciudadano) }) {
+                                Icon(Icons.Default.Edit, contentDescription = "Editar")
+                            }
                         }
-                        IconButton(onClick = { ciudadanoParaEliminar = ciudadano }) {
+                        if (puedeEliminarPadron) {
+                            IconButton(onClick = { ciudadanoParaEliminar = ciudadano }) {
+                                Icon(
+                                    Icons.Default.Delete,
+                                    contentDescription = "Eliminar",
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        } else if (puedeEscribirPadron) {
                             Icon(
-                                Icons.Default.Delete,
-                                contentDescription = "Eliminar",
-                                tint = MaterialTheme.colorScheme.error
+                                imageVector = Icons.Default.Lock,
+                                contentDescription = "Borrado protegido en Brigada",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
+                                modifier = Modifier
+                                    .padding(horizontal = 6.dp)
+                                    .size(18.dp)
                             )
                         }
                     }
@@ -276,6 +305,8 @@ fun CiudadanoScreen(
 @Composable
 private fun TarjetaDniElectronicoInteractivo(
     ciudadano: Ciudadano,
+    puedeCrearTramite: Boolean,
+    puedeEditar: Boolean,
     onIniciarTramite: () -> Unit,
     onVerificarHuella: () -> Unit,
     onEditar: () -> Unit
@@ -333,7 +364,6 @@ private fun TarjetaDniElectronicoInteractivo(
             HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
 
             if (!mostrarReverso) {
-                // ANVERSO DEL DNIe
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -412,7 +442,6 @@ private fun TarjetaDniElectronicoInteractivo(
                     }
                 }
             } else {
-                // REVERSO DEL DNIe CON QR, HUELLA Y MRZ
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -523,7 +552,7 @@ private fun TarjetaDniElectronicoInteractivo(
                         tint = MaterialTheme.colorScheme.primary
                     )
                     Text(
-                        text = if (!mostrarReverso) "Toca la tarjeta para ver el reverso (MRZ/QR)" else "Toca para volver al frente",
+                        text = if (!mostrarReverso) "Toca la tarjeta para girar el DNIe 3.0 (MRZ/QR)" else "Toca para volver al anverso",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.SemiBold
@@ -537,13 +566,15 @@ private fun TarjetaDniElectronicoInteractivo(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Button(
-                    onClick = onIniciarTramite,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Icon(Icons.Default.PostAdd, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Trámite", style = MaterialTheme.typography.labelMedium)
+                if (puedeCrearTramite) {
+                    Button(
+                        onClick = onIniciarTramite,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Default.PostAdd, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Trámite", style = MaterialTheme.typography.labelMedium)
+                    }
                 }
                 FilledTonalButton(
                     onClick = onVerificarHuella,
@@ -553,13 +584,15 @@ private fun TarjetaDniElectronicoInteractivo(
                     Spacer(modifier = Modifier.width(4.dp))
                     Text("AFIS Huella", style = MaterialTheme.typography.labelMedium)
                 }
-                OutlinedButton(
-                    onClick = onEditar,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Editar", style = MaterialTheme.typography.labelMedium)
+                if (puedeEditar) {
+                    OutlinedButton(
+                        onClick = onEditar,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Editar", style = MaterialTheme.typography.labelMedium)
+                    }
                 }
             }
         }

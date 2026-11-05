@@ -30,19 +30,48 @@ public class SecurityConfig {
 
     @Bean
     public UserDetailsService userDetailsService(PasswordEncoder encoder) {
+        // 1. Jefe de Registro Civil / Administrador: Acceso total (Crear, Editar, Atender/Aprobar, Eliminar y Recaudacion)
         UserDetails admin = User.builder()
                 .username("admin")
                 .password(encoder.encode("Admin123!"))
-                .authorities("PADRON_LEER", "PADRON_ESCRIBIR", "TRAMITES_LEER", "TRAMITES_ESCRIBIR", "ROLE_ADMIN")
+                .authorities(
+                        "ROLE_ADMIN",
+                        "PADRON_LEER",
+                        "PADRON_ESCRIBIR",
+                        "PADRON_ELIMINAR",
+                        "TRAMITES_LEER",
+                        "TRAMITES_ESCRIBIR",
+                        "TRAMITES_APROBAR",
+                        "TRAMITES_ELIMINAR",
+                        "RECAUDACION_VER"
+                )
                 .build();
 
+        // 2. Brigadista de Campo: Empadrona y crea/edita tramites offline/online, pero NO elimina padron ni anula registros
         UserDetails brigadista = User.builder()
                 .username("dolton")
                 .password(encoder.encode("Reniec2026!"))
-                .authorities("PADRON_LEER", "PADRON_ESCRIBIR", "TRAMITES_LEER", "TRAMITES_ESCRIBIR", "ROLE_BRIGADISTA")
+                .authorities(
+                        "ROLE_BRIGADISTA",
+                        "PADRON_LEER",
+                        "PADRON_ESCRIBIR",
+                        "TRAMITES_LEER",
+                        "TRAMITES_ESCRIBIR"
+                )
                 .build();
 
-        return new InMemoryUserDetailsManager(admin, brigadista);
+        // 3. Modulo de Consulta / Verificador: Solo busca DNIs, gira DNIe 3.0, pasa huella AFIS y consulta etapa del tramite
+        UserDetails verificador = User.builder()
+                .username("verificador")
+                .password(encoder.encode("Verifica2026!"))
+                .authorities(
+                        "ROLE_VERIFICADOR",
+                        "PADRON_LEER",
+                        "TRAMITES_LEER"
+                )
+                .build();
+
+        return new InMemoryUserDetailsManager(admin, brigadista, verificador);
     }
 
     @Bean
@@ -72,6 +101,12 @@ public class SecurityConfig {
                                 "/v3/api-docs/**"
                         ).permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/ciudadanos/**").hasAuthority("PADRON_ELIMINAR")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/tramites/**").hasAuthority("TRAMITES_ELIMINAR")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/ciudadanos/**").hasAuthority("PADRON_ESCRIBIR")
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/ciudadanos/**").hasAuthority("PADRON_ESCRIBIR")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/tramites/**").hasAuthority("TRAMITES_ESCRIBIR")
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/tramites/**").hasAuthority("TRAMITES_ESCRIBIR")
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);

@@ -50,7 +50,10 @@ fun crearHttpClient(
     install(Auth) {
         bearer {
             loadTokens {
-                almacen.leerToken()?.let { BearerTokens(it, "") }
+                almacen.leerToken()?.let { raw ->
+                    val tokenPuro = raw.substringAfter("|", raw)
+                    BearerTokens(tokenPuro, "")
+                }
             }
             sendWithoutRequest { peticion ->
                 !peticion.url.encodedPath.endsWith("/auth/login")

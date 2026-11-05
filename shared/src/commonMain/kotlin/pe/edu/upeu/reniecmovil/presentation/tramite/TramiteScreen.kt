@@ -1,6 +1,5 @@
 package pe.edu.upeu.reniecmovil.presentation.tramite
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -9,13 +8,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -47,19 +44,24 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import pe.edu.upeu.reniecmovil.domain.model.EstadoTramiteDni
+import pe.edu.upeu.reniecmovil.domain.model.Sesion
 import pe.edu.upeu.reniecmovil.domain.model.TipoTramiteDni
 import pe.edu.upeu.reniecmovil.domain.model.TramiteDni
 
 @Composable
 fun TramiteScreen(
-    viewModel: TramiteViewModel
+    viewModel: TramiteViewModel,
+    sesion: Sesion
 ) {
     val state by viewModel.uiState.collectAsState()
     var tramiteParaEliminar by remember { mutableStateOf<TramiteDni?>(null) }
+
+    val puedeEscribirTramite = sesion.puede("TRAMITES_ESCRIBIR")
+    val puedeAprobarTramite = sesion.puede("TRAMITES_APROBAR") || sesion.puede("ROLE_ADMIN")
+    val puedeEliminarTramite = sesion.puede("TRAMITES_ELIMINAR") || sesion.puede("ROLE_ADMIN")
 
     tramiteParaEliminar?.let { tramite ->
         AlertDialog(
@@ -107,9 +109,13 @@ fun TramiteScreen(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "Seguimiento por Etapas + Sincronización Offline-First",
+                        text = when {
+                            puedeEliminarTramite -> "Rol Admin: Crear, Editar, Aprobar/Atender y Eliminar habilitados"
+                            puedeEscribirTramite -> "Rol Brigadista: Creación y edición Offline-First habilitadas"
+                            else -> "Módulo Consulta: Visualización de etapas del trámite"
+                        },
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -121,10 +127,12 @@ fun TramiteScreen(
                         Spacer(modifier = Modifier.size(4.dp))
                         Text("Sync")
                     }
-                    Button(onClick = { viewModel.abrirNuevoTramite() }) {
-                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.size(4.dp))
-                        Text("Nuevo")
+                    if (puedeEscribirTramite) {
+                        Button(onClick = { viewModel.abrirNuevoTramite() }) {
+                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.size(4.dp))
+                            Text("Nuevo")
+                        }
                     }
                 }
             }
@@ -193,7 +201,7 @@ fun TramiteScreen(
             }
         }
 
-        if (state.mostrarFormulario) {
+        if (state.mostrarFormulario && puedeEscribirTramite) {
             item {
                 FormularioTramiteCard(
                     esEdicion = state.editandoId != null,
@@ -209,6 +217,9 @@ fun TramiteScreen(
         items(state.tramitesFiltrados, key = { it.id }) { tramite ->
             TarjetaTramiteItem(
                 tramite = tramite,
+                puedeEditar = puedeEscribirTramite,
+                puedeAprobar = puedeAprobarTramite,
+                puedeEliminar = puedeEliminarTramite,
                 onEditar = { viewModel.iniciarEdicion(tramite) },
                 onMarcarAtendido = { viewModel.cambiarEstadoRapido(tramite, EstadoTramiteDni.ATENDIDO) },
                 onEliminar = { tramiteParaEliminar = tramite }
@@ -220,6 +231,9 @@ fun TramiteScreen(
 @Composable
 private fun TarjetaTramiteItem(
     tramite: TramiteDni,
+    puedeEditar: Boolean,
+    puedeAprobar: Boolean,
+    puedeEliminar: Boolean,
     onEditar: () -> Unit,
     onMarcarAtendido: () -> Unit,
     onEliminar: () -> Unit
@@ -280,7 +294,6 @@ private fun TarjetaTramiteItem(
                 fontWeight = FontWeight.SemiBold
             )
 
-            // Stepper visual de progreso del trámite DNI
             StepperEstadoTramite(estado = estado)
 
             Text(
@@ -294,28 +307,34 @@ private fun TarjetaTramiteItem(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                if (estado != EstadoTramiteDni.ATENDIDO) {
-                    IconButton(onClick = onMarcarAtendido) {
-                        Icon(
-                            Icons.Default.CheckCircle,
-                            contentDescription = "Marcar Atendido",
-                            tint = MaterialTheme.colorScheme.secondary
-                        )
+            if (puedeEditar || puedeAprobar || puedeEliminar) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    if (puedeAprobar && estado != EstadoTramiteDni.ATENDIDO) {
+                        IconButton(onClick = onMarcarAtendido) {
+                            Icon(
+                                Icons.Default.CheckCircle,
+                                contentDescription = "Aprobar / Marcar Atendido",
+                                tint = MaterialTheme.colorScheme.secondary
+                            )
+                        }
                     }
-                }
-                IconButton(onClick = onEditar) {
-                    Icon(Icons.Default.Edit, contentDescription = "Editar Trámite")
-                }
-                IconButton(onClick = onEliminar) {
-                    Icon(
-                        Icons.Default.Delete,
-                        contentDescription = "Anular Trámite",
-                        tint = MaterialTheme.colorScheme.error
-                    )
+                    if (puedeEditar) {
+                        IconButton(onClick = onEditar) {
+                            Icon(Icons.Default.Edit, contentDescription = "Editar Trámite")
+                        }
+                    }
+                    if (puedeEliminar) {
+                        IconButton(onClick = onEliminar) {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = "Anular Trámite",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
                 }
             }
         }

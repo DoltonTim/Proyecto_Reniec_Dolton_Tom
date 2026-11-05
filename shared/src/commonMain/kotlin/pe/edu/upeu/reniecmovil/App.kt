@@ -157,7 +157,7 @@ private fun ReniecMainScaffold(
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(
-                            text = "@${sesion.usuario} • ${sesion.sede}",
+                            text = "@${sesion.usuario} • ${sesion.cargo}",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -181,7 +181,7 @@ private fun ReniecMainScaffold(
                 }
 
                 NavigationDrawerItem(
-                    label = { Text("Cerrar sesión") },
+                    label = { Text("Cerrar sesión (${sesion.usuario})") },
                     selected = false,
                     onClick = {
                         scope.launch { drawerState.close() }
@@ -212,7 +212,7 @@ private fun ReniecMainScaffold(
                 TopAppBar(
                     title = {
                         val titulo = destinos.firstOrNull { it.screen == pantallaActual }?.titulo ?: "RENIEC Móvil"
-                        Text("RENIEC • $titulo")
+                        Text("RENIEC • $titulo (${sesion.usuario.uppercase()})")
                     },
                     navigationIcon = {
                         IconButton(onClick = { scope.launch { drawerState.open() } }) {
@@ -272,13 +272,15 @@ private fun ReniecMainScaffold(
                     )
                     Screen.PadronDni -> CiudadanoScreen(
                         viewModel = ciudadanoViewModel,
+                        sesion = sesion,
                         onIniciarTramiteParaCiudadano = { ciudadano ->
                             tramiteViewModel.abrirNuevoTramite(ciudadano)
                             pantallaActual = Screen.Tramites
                         }
                     )
                     Screen.Tramites -> TramiteScreen(
-                        viewModel = tramiteViewModel
+                        viewModel = tramiteViewModel,
+                        sesion = sesion
                     )
                     Screen.Perfil -> PerfilScreen(
                         sesion = sesion,
