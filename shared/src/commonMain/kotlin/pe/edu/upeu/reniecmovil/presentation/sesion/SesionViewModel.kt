@@ -14,8 +14,8 @@ import pe.edu.upeu.reniecmovil.domain.usecase.IniciarSesionUseCase
 import pe.edu.upeu.reniecmovil.domain.usecase.ObtenerSesionGuardadaUseCase
 
 data class SesionUiState(
-    val usuario: String = "admin",
-    val clave: String = "Admin123!",
+    val usuario: String = "",
+    val clave: String = "",
     val cargando: Boolean = false,
     val sesion: Sesion? = null,
     val error: String? = null
@@ -55,7 +55,7 @@ class SesionViewModel(
         val clave = _estado.value.clave.trim()
 
         if (usuario.isBlank() || clave.isBlank()) {
-            _estado.update { it.copy(error = "Ingrese su código de registrador y contraseña") }
+            _estado.update { it.copy(error = "Ingrese su usuario y contraseña institucional") }
             return
         }
 
@@ -66,6 +66,8 @@ class SesionViewModel(
                     _estado.update {
                         it.copy(
                             sesion = sesion,
+                            usuario = "",
+                            clave = "",
                             cargando = false,
                             error = null
                         )
@@ -76,7 +78,7 @@ class SesionViewModel(
                     _estado.update {
                         it.copy(
                             cargando = false,
-                            error = fallo.message ?: "No se pudo autenticar con Central RENIEC"
+                            error = fallo.message ?: "Credenciales inválidas"
                         )
                     }
                 }
