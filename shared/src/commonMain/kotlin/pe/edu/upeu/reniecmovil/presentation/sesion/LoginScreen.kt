@@ -1,11 +1,9 @@
 package pe.edu.upeu.reniecmovil.presentation.sesion
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,19 +15,18 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.Badge
-import androidx.compose.material.icons.filled.Engineering
-import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.VerifiedUser
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -37,21 +34,16 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-
-private data class RolDemoReniec(
-    val tituloRol: String,
-    val usuario: String,
-    val clave: String,
-    val alcance: String,
-    val icono: ImageVector
-)
 
 @Composable
 fun LoginScreen(
@@ -59,64 +51,41 @@ fun LoginScreen(
     onLoginExitoso: () -> Unit = {}
 ) {
     val estado by viewModel.estado.collectAsState()
-
-    val rolesDisponibles = listOf(
-        RolDemoReniec(
-            tituloRol = "1. Administrador / Jefe Registro Civil",
-            usuario = "admin",
-            clave = "Admin123!",
-            alcance = "Acceso Total: Crear, Editar, Aprobar/Atender, Eliminar y Recaudación",
-            icono = Icons.Default.AdminPanelSettings
-        ),
-        RolDemoReniec(
-            tituloRol = "2. Brigadista de Campo (Offline/Online)",
-            usuario = "dolton",
-            clave = "Reniec2026!",
-            alcance = "Empadrona y crea trámites offline/online (Borrado de padrón protegido)",
-            icono = Icons.Default.Engineering
-        ),
-        RolDemoReniec(
-            tituloRol = "3. Módulo de Consulta / Verificador AFIS",
-            usuario = "verificador",
-            clave = "Verifica2026!",
-            alcance = "Solo busca DNIs, gira DNIe 3.0, pasa huella AFIS y consulta etapa de trámite",
-            icono = Icons.Default.Fingerprint
-        )
-    )
+    var mostrarClave by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp),
+            .padding(20.dp),
         contentAlignment = Alignment.Center
     ) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState()),
-            shape = RoundedCornerShape(20.dp),
+            shape = RoundedCornerShape(22.dp),
             elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(22.dp),
+                    .padding(28.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Surface(
                     shape = CircleShape,
                     color = MaterialTheme.colorScheme.primaryContainer,
-                    modifier = Modifier.size(68.dp)
+                    modifier = Modifier.size(76.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             imageVector = Icons.Default.Badge,
                             contentDescription = "Logo RENIEC",
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(38.dp)
+                            modifier = Modifier.size(42.dp)
                         )
                     }
                 }
@@ -134,16 +103,19 @@ fun LoginScreen(
                     fontWeight = FontWeight.ExtraBold
                 )
                 Text(
-                    text = "Control de Acceso Basado en Roles (RBAC + JWT) y Operación Offline-First",
-                    style = MaterialTheme.typography.bodySmall,
+                    text = "Sistema Institucional de Identificación y Registro Civil",
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
                 )
+
+                Spacer(modifier = Modifier.height(6.dp))
 
                 OutlinedTextField(
                     value = estado.usuario,
                     onValueChange = viewModel::onUsuarioChange,
                     label = { Text("Usuario Institucional") },
+                    placeholder = { Text("Ingrese su usuario") },
                     leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -153,8 +125,17 @@ fun LoginScreen(
                     value = estado.clave,
                     onValueChange = viewModel::onClaveChange,
                     label = { Text("Contraseña") },
+                    placeholder = { Text("Ingrese su contraseña") },
                     leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
-                    visualTransformation = PasswordVisualTransformation(),
+                    trailingIcon = {
+                        IconButton(onClick = { mostrarClave = !mostrarClave }) {
+                            Icon(
+                                imageVector = if (mostrarClave) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                contentDescription = if (mostrarClave) "Ocultar contraseña" else "Mostrar contraseña"
+                            )
+                        }
+                    },
+                    visualTransformation = if (mostrarClave) VisualTransformation.None else PasswordVisualTransformation(),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -174,12 +155,14 @@ fun LoginScreen(
                     }
                 }
 
+                Spacer(modifier = Modifier.height(4.dp))
+
                 Button(
                     onClick = { viewModel.iniciarSesion(onLoginExitoso) },
                     enabled = !estado.cargando,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(50.dp),
+                        .height(52.dp),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     if (estado.cargando) {
@@ -191,69 +174,16 @@ fun LoginScreen(
                     } else {
                         Icon(Icons.Default.VerifiedUser, contentDescription = null)
                         Spacer(modifier = Modifier.size(8.dp))
-                        Text("INGRESAR AL SISTEMA (JWT)", fontWeight = FontWeight.Bold)
+                        Text("INICIAR SESIÓN", fontWeight = FontWeight.Bold)
                     }
                 }
-
-                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
                 Text(
-                    text = "Selecciona un Perfil para Autocompletar Credenciales:",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                    text = "Acceso exclusivo para personal autorizado del RENIEC",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
                 )
-
-                rolesDisponibles.forEach { rol ->
-                    val seleccionado = estado.usuario.equals(rol.usuario, ignoreCase = true)
-                    Surface(
-                        color = if (seleccionado) {
-                            MaterialTheme.colorScheme.primaryContainer
-                        } else {
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
-                        },
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                viewModel.onUsuarioChange(rol.usuario)
-                                viewModel.onClaveChange(rol.clave)
-                            }
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Icon(
-                                imageVector = rol.icono,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(26.dp)
-                            )
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = rol.tituloRol,
-                                    style = MaterialTheme.typography.labelLarge,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    text = "Usuario: ${rol.usuario}  |  Clave: ${rol.clave}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.secondary,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    text = rol.alcance,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-                }
             }
         }
     }
