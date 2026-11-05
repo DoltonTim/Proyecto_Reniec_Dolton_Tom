@@ -3,9 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Reniec Móvil • Sistema Nacional de Identificación (UPeU)</title>
+  <title>Reniec Móvil • Sistema Nacional de Identificación (UPeU + Supabase Cloud)</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -50,16 +49,27 @@
 </head>
 <body class="min-h-screen flex flex-col items-center justify-center p-0 sm:p-4">
 
-  <!-- Contenedor Principal (Modo Teléfono en Desktop o Pantalla Completa en Móvil) -->
+  <!-- Contenedor Principal -->
   <div id="app-root" class="w-full max-w-md sm:max-w-5xl min-h-screen sm:min-h-[860px] bg-[#160821] sm:rounded-3xl sm:shadow-2xl sm:border sm:border-[#3d1e57] overflow-hidden flex flex-col relative">
   </div>
 
-  <!-- Modal AFIS / Ayuda / Confirmación -->
+  <!-- Modal AFIS / Ayuda -->
   <div id="modal-root" class="fixed inset-0 bg-black/75 z-50 hidden items-center justify-center p-4"></div>
 
   <script>
     // =========================================================================
-    // 1. CATÁLOGO OFICIAL DE UBIGEOS INEI / RENIEC
+    // 1. CONFIGURACIÓN OFICIAL SUPABASE CLOUD (vktclzpkebwvfbrvtpxo)
+    // =========================================================================
+    const SUPABASE_URL = "https://vktclzpkebwvfbrvtpxo.supabase.co/rest/v1";
+    const SUPABASE_KEY = "sb_publishable_R4lNuJJ9kfF9LGuUlbLLgA_MkQIJQ5B";
+    const SUPABASE_HEADERS = {
+      "apikey": SUPABASE_KEY,
+      "Content-Type": "application/json",
+      "Prefer": "return=representation"
+    };
+
+    // =========================================================================
+    // 2. CATÁLOGO OFICIAL DE UBIGEOS INEI / RENIEC
     // =========================================================================
     const SEDES_UBIGEO = [
       { codigo: "150118", departamento: "LIMA", provincia: "LIMA", distrito: "LURIGANCHO-CHOSICA", agencia: "Agencia RENIEC Ñaña - Carretera Central" },
@@ -87,7 +97,7 @@
     const ESTADOS_TRAMITE = ["PENDIENTE", "EN_PROCESO", "OBSERVADO", "ATENDIDO"];
 
     // =========================================================================
-    // 2. ROLES RBAC (MISMOS 3 USUARIOS QUE ANDROID Y SPRING BOOT)
+    // 3. ROLES RBAC (MISMOS 3 USUARIOS QUE ANDROID Y SPRING BOOT)
     // =========================================================================
     const USUARIOS_RBAC = {
       admin: {
@@ -116,9 +126,6 @@
       }
     };
 
-    // =========================================================================
-    // 3. DATOS SEMILLA INICIALES (SINCRONIZADOS CON ANDROID / SQLDELIGHT)
-    // =========================================================================
     const CIUDADANOS_INICIALES = [
       { id: 1, dni: "72345678", nombres: "DOLTON TOM", apellidoPaterno: "MEZA", apellidoMaterno: "QUISPE", fechaNacimiento: "2001-05-14", estadoCivil: "SOLTERO", ubigeo: "150118 - LIMA / LIMA / LURIGANCHO-CHOSICA", direccion: "CARRETERA CENTRAL KM 19.5 VILLA UNION - ÑAÑA", donacionOrganos: true },
       { id: 2, dni: "45896321", nombres: "MARIA ELENA", apellidoPaterno: "PAREDES", apellidoMaterno: "MENDOZA", fechaNacimiento: "1995-08-22", estadoCivil: "CASADO", ubigeo: "120114 - JUNIN / HUANCAYO / EL TAMBO", direccion: "AV. REAL 1240 URB. SAN CARLOS", donacionOrganos: true },
@@ -134,7 +141,7 @@
     ];
 
     // =========================================================================
-    // 4. ESTADO REACTIVO DE LA APLICACIÓN WEB
+    // 4. ESTADO REACTIVO Y SINCRONIZACIÓN CON SUPABASE PostgreSQL
     // =========================================================================
     const state = {
       sesion: JSON.parse(localStorage.getItem("reniec_sesion") || "null"),
@@ -142,7 +149,7 @@
       loginClave: "",
       mostrarClave: false,
       loginError: null,
-      tabActual: "inicio", // inicio | padron | tramites | perfil
+      tabActual: "inicio",
       ciudadanos: JSON.parse(localStorage.getItem("reniec_ciudadanos") || JSON.stringify(CIUDADANOS_INICIALES)),
       tramites: JSON.parse(localStorage.getItem("reniec_tramites") || JSON.stringify(TRAMITES_INICIALES)),
       filtroDepartamento: "TODOS",
@@ -158,10 +165,8 @@
       mostrarFormTramite: false,
       editandoTramiteId: null,
       formTramite: { dniCiudadano: "", nombreCiudadano: "", tipoTramite: "RENOVACION", estado: "PENDIENTE", ubigeoDestino: "150118 - LIMA / LIMA / LURIGANCHO-CHOSICA", observaciones: "" },
-      avisoToast: null,
-      supabaseUrl: localStorage.getItem("reniec_sb_url") || "",
-      supabaseKey: localStorage.getItem("reniec_sb_key") || "",
-      supabaseConectado: false
+      supabaseConectado: false,
+      sincronizando: false
     };
 
     function guardarStorage() {
@@ -171,6 +176,55 @@
         localStorage.setItem("reniec_sesion", JSON.stringify(state.sesion));
       } else {
         localStorage.removeItem("reniec_sesion");
+      }
+    }
+
+    async function sincronizarConSupabase() {
+      state.sincronizando = true;
+      render();
+      try {
+        const [resC, resT] = await Promise.all([
+          fetch(`${SUPABASE_URL}/ciudadanos?select=*&order=id.desc`, { headers: SUPABASE_HEADERS }),
+          fetch(`${SUPABASE_URL}/tramites?select=*&order=id.desc`, { headers: SUPABASE_HEADERS })
+        ]);
+        if (resC.ok) {
+          const dataC = await resC.json();
+          state.ciudadanos = dataC.map(c => ({
+            id: c.id,
+            dni: c.dni,
+            nombres: c.nombres,
+            apellidoPaterno: c.apellido_paterno,
+            apellidoMaterno: c.apellido_materno,
+            fechaNacimiento: c.fecha_nacimiento,
+            estadoCivil: c.estado_civil,
+            ubigeo: c.ubigeo,
+            direccion: c.direccion,
+            donacionOrganos: c.donacion_organos
+          }));
+          if (!state.ciudadanos.some(x => x.id === state.ciudadanoSeleccionadoId)) {
+            state.ciudadanoSeleccionadoId = state.ciudadanos[0]?.id || 1;
+          }
+        }
+        if (resT.ok) {
+          const dataT = await resT.json();
+          state.tramites = dataT.map(t => ({
+            id: t.id,
+            dniCiudadano: t.dni_ciudadano,
+            nombreCiudadano: t.nombre_ciudadano,
+            tipoTramite: t.tipo_tramite,
+            estado: t.estado,
+            ubigeoDestino: t.ubigeo_destino,
+            observaciones: t.observaciones,
+            fechaRegistro: t.fecha_registro
+          }));
+        }
+        state.supabaseConectado = true;
+        guardarStorage();
+      } catch (err) {
+        state.supabaseConectado = false;
+      } finally {
+        state.sincronizando = false;
+        render();
       }
     }
 
@@ -230,7 +284,7 @@
     }
 
     // =========================================================================
-    // 5. ACCIONES DE NEGOCIO
+    // 5. ACCIONES CRUD SINCRONIZADAS CON SUPABASE
     // =========================================================================
     function ejecutarLogin(e) {
       if (e) e.preventDefault();
@@ -247,7 +301,7 @@
       state.loginUsuario = "";
       state.loginClave = "";
       guardarStorage();
-      render();
+      sincronizarConSupabase();
     }
 
     function cerrarSesion() {
@@ -257,7 +311,7 @@
       render();
     }
 
-    function guardarCiudadano(e) {
+    async function guardarCiudadano(e) {
       e.preventDefault();
       const f = state.formCiudadano;
       if (!/^\d{8}$/.test(f.dni.trim())) {
@@ -268,29 +322,48 @@
         mostrarModal("Validación de Padrón", "Complete los nombres, apellidos y dirección domiciliaria.");
         return;
       }
-      if (state.editandoCiudadanoId) {
-        state.ciudadanos = state.ciudadanos.map(c => c.id === state.editandoCiudadanoId ? { ...f, id: c.id } : c);
-        state.ciudadanoSeleccionadoId = state.editandoCiudadanoId;
-      } else {
-        const nuevoId = Math.max(0, ...state.ciudadanos.map(c => c.id)) + 1;
-        const nuevo = { ...f, id: nuevoId };
-        state.ciudadanos = [nuevo, ...state.ciudadanos];
-        state.ciudadanoSeleccionadoId = nuevoId;
+      const payload = {
+        dni: f.dni.trim(),
+        nombres: f.nombres.trim(),
+        apellido_paterno: f.apellidoPaterno.trim(),
+        apellido_materno: f.apellidoMaterno.trim(),
+        fecha_nacimiento: f.fechaNacimiento,
+        estado_civil: f.estadoCivil,
+        ubigeo: f.ubigeo,
+        direccion: f.direccion.trim(),
+        donacion_organos: !!f.donacionOrganos
+      };
+      try {
+        if (state.editandoCiudadanoId) {
+          await fetch(`${SUPABASE_URL}/ciudadanos?id=eq.${state.editandoCiudadanoId}`, {
+            method: "PATCH",
+            headers: SUPABASE_HEADERS,
+            body: JSON.stringify(payload)
+          });
+        } else {
+          await fetch(`${SUPABASE_URL}/ciudadanos`, {
+            method: "POST",
+            headers: SUPABASE_HEADERS,
+            body: JSON.stringify(payload)
+          });
+        }
+        state.mostrarFormCiudadano = false;
+        state.editandoCiudadanoId = null;
+        await sincronizarConSupabase();
+      } catch (err) {
+        mostrarModal("Error de Red", "No se pudo sincronizar con Supabase.");
       }
-      state.mostrarFormCiudadano = false;
-      state.editandoCiudadanoId = null;
-      guardarStorage();
-      render();
     }
 
-    function eliminarCiudadano(id) {
+    async function eliminarCiudadano(id) {
       if (!tienePermiso("PADRON_ELIMINAR")) return;
-      state.ciudadanos = state.ciudadanos.filter(c => c.id !== id);
-      if (state.ciudadanoSeleccionadoId === id) {
-        state.ciudadanoSeleccionadoId = state.ciudadanos[0]?.id || null;
-      }
-      guardarStorage();
-      render();
+      try {
+        await fetch(`${SUPABASE_URL}/ciudadanos?id=eq.${id}`, {
+          method: "DELETE",
+          headers: SUPABASE_HEADERS
+        });
+        await sincronizarConSupabase();
+      } catch (err) {}
     }
 
     function iniciarTramiteDesdeCiudadano(idCiudadano) {
@@ -310,7 +383,7 @@
       render();
     }
 
-    function guardarTramite(e) {
+    async function guardarTramite(e) {
       e.preventDefault();
       const f = state.formTramite;
       if (!/^\d{8}$/.test(f.dniCiudadano.trim()) || !f.nombreCiudadano.trim()) {
@@ -318,30 +391,56 @@
         return;
       }
       const hoy = new Date().toISOString().slice(0, 10);
-      if (state.editandoTramiteId) {
-        state.tramites = state.tramites.map(t => t.id === state.editandoTramiteId ? { ...f, id: t.id, fechaRegistro: t.fechaRegistro } : t);
-      } else {
-        const nuevoId = Math.max(0, ...state.tramites.map(t => t.id)) + 1;
-        state.tramites = [{ ...f, id: nuevoId, fechaRegistro: hoy }, ...state.tramites];
-      }
-      state.mostrarFormTramite = false;
-      state.editandoTramiteId = null;
-      guardarStorage();
-      render();
+      const payload = {
+        dni_ciudadano: f.dniCiudadano.trim(),
+        nombre_ciudadano: f.nombreCiudadano.trim(),
+        tipo_tramite: f.tipoTramite,
+        estado: f.estado,
+        ubigeo_destino: f.ubigeoDestino,
+        observaciones: f.observaciones.trim(),
+        fecha_registro: hoy
+      };
+      try {
+        if (state.editandoTramiteId) {
+          await fetch(`${SUPABASE_URL}/tramites?id=eq.${state.editandoTramiteId}`, {
+            method: "PATCH",
+            headers: SUPABASE_HEADERS,
+            body: JSON.stringify(payload)
+          });
+        } else {
+          await fetch(`${SUPABASE_URL}/tramites`, {
+            method: "POST",
+            headers: SUPABASE_HEADERS,
+            body: JSON.stringify(payload)
+          });
+        }
+        state.mostrarFormTramite = false;
+        state.editandoTramiteId = null;
+        await sincronizarConSupabase();
+      } catch (err) {}
     }
 
-    function aprobarTramite(id) {
+    async function aprobarTramite(id) {
       if (!tienePermiso("TRAMITES_APROBAR")) return;
-      state.tramites = state.tramites.map(t => t.id === id ? { ...t, estado: "ATENDIDO" } : t);
-      guardarStorage();
-      render();
+      try {
+        await fetch(`${SUPABASE_URL}/tramites?id=eq.${id}`, {
+          method: "PATCH",
+          headers: SUPABASE_HEADERS,
+          body: JSON.stringify({ estado: "ATENDIDO" })
+        });
+        await sincronizarConSupabase();
+      } catch (err) {}
     }
 
-    function eliminarTramite(id) {
+    async function eliminarTramite(id) {
       if (!tienePermiso("TRAMITES_ELIMINAR")) return;
-      state.tramites = state.tramites.filter(t => t.id !== id);
-      guardarStorage();
-      render();
+      try {
+        await fetch(`${SUPABASE_URL}/tramites?id=eq.${id}`, {
+          method: "DELETE",
+          headers: SUPABASE_HEADERS
+        });
+        await sincronizarConSupabase();
+      } catch (err) {}
     }
 
     // =========================================================================
@@ -350,10 +449,8 @@
     function renderLogin() {
       return `
         <div class="flex-1 login-gradient relative flex flex-col items-center justify-between overflow-hidden min-h-screen sm:min-h-[860px]">
-          <!-- Superficie con pico diagonal tipo The Stori -->
           <div class="absolute inset-0 bg-[#1A0926] stori-peak pointer-events-none"></div>
 
-          <!-- Cabecera Superior con Rombo 45° -->
           <div class="relative z-10 pt-12 pb-6 px-6 flex items-center justify-center gap-5 w-full">
             <div class="w-12 h-12 rotate-45 border-2 border-white rounded-xl p-1.5 flex items-center justify-center shadow-lg">
               <div class="w-full h-full border border-[#C6FF00] rounded-md flex items-center justify-center">
@@ -366,7 +463,6 @@
             </div>
           </div>
 
-          <!-- Formulario Central dentro del Pico Oscuro -->
           <form onsubmit="ejecutarLogin(event)" class="relative z-10 w-full max-w-sm px-8 pb-12 pt-16 flex flex-col flex-1 justify-center">
             <h2 class="text-3xl sm:text-4xl font-extrabold text-center text-white mb-9">Login</h2>
 
@@ -449,21 +545,21 @@
 
       return `
         <div class="space-y-4">
-          <!-- Banner de Estado Cloud / Offline -->
           <div class="p-4 rounded-2xl bg-[#2E1647] border border-[#5d2c85] flex items-center justify-between gap-3">
             <div class="flex items-center gap-3">
-              <span class="text-2xl">☁️</span>
+              <span class="text-2xl">⚡</span>
               <div>
-                <div class="text-xs sm:text-sm font-extrabold text-[#C6FF00]">CONECTADO A CLOUDFLARE PAGES + PIDE RENIEC</div>
-                <div class="text-xs text-[#C9B6D9]">Sincronización multiplataforma Web & Android APK (JWT + SQLDelight)</div>
+                <div class="text-xs sm:text-sm font-extrabold text-[#C6FF00]">
+                  ${state.supabaseConectado ? 'CONECTADO A SUPABASE CLOUD PostgreSQL (ONLINE)' : 'SINCRONIZANDO CON SUPABASE CLOUD...'}
+                </div>
+                <div class="text-xs text-[#C9B6D9]">Base de datos compartida en tiempo real entre Android APK y Cloudflare Pages</div>
               </div>
             </div>
-            <button onclick="render()" class="px-3.5 py-2 rounded-xl bg-[#4B125E] text-white text-xs font-bold hover:bg-[#640D5F]">
-              🔄 Sync
+            <button onclick="sincronizarConSupabase()" class="px-3.5 py-2 rounded-xl bg-[#C6FF00] text-[#14071E] text-xs font-extrabold hover:opacity-90">
+              ${state.sincronizando ? '...' : '🔄 Sync'}
             </button>
           </div>
 
-          <!-- Credencial del Operador -->
           <div class="p-4 rounded-2xl bg-[#4B125E] flex items-center justify-between">
             <div>
               <h3 class="text-base sm:text-lg font-extrabold text-white">${s.nombreCompleto}</h3>
@@ -479,17 +575,16 @@
             </div>
           </div>
 
-          <!-- 4 KPIs -->
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div class="p-4 rounded-2xl bg-[#231033] border border-[#3d1e57]">
               <div class="text-xs font-bold text-[#C6FF00]">Padrón DNI</div>
               <div class="text-2xl font-extrabold mt-1">${state.ciudadanos.length}</div>
-              <div class="text-xs text-[#C9B6D9]">Ciudadanos en padrón</div>
+              <div class="text-xs text-[#C9B6D9]">En Supabase Cloud</div>
             </div>
             <div class="p-4 rounded-2xl bg-[#231033] border border-[#3d1e57]">
               <div class="text-xs font-bold text-[#C6FF00]">Trámites DNI</div>
               <div class="text-2xl font-extrabold mt-1">${totalTramites}</div>
-              <div class="text-xs text-[#C9B6D9]">Solicitudes registradas</div>
+              <div class="text-xs text-[#C9B6D9]">Solicitudes activas</div>
             </div>
             <div class="p-4 rounded-2xl bg-[#231033] border border-[#3d1e57]">
               <div class="text-xs font-bold text-[#40C4FF]">Departamentos</div>
@@ -503,7 +598,6 @@
             </div>
           </div>
 
-          <!-- Barra de Progreso y Distribución -->
           <div class="p-4 rounded-2xl bg-[#231033] border border-[#3d1e57] space-y-3">
             <div class="flex justify-between items-center">
               <span class="text-sm font-bold text-white">📊 Indicadores de Brigada RENIEC</span>
@@ -555,7 +649,7 @@
         <div class="space-y-4">
           <div class="flex items-center justify-between gap-2">
             <div>
-              <h2 class="text-base sm:text-lg font-extrabold">Padrón Nacional PIDE • API RENIEC</h2>
+              <h2 class="text-base sm:text-lg font-extrabold">Padrón Nacional PIDE • Supabase Cloud</h2>
               <p class="text-xs text-[#C6FF00]">
                 ${puedeEliminar ? 'Perfil Admin: Control total por Departamento / Provincia / Distrito' : puedeEscribir ? 'Perfil Brigadista: Empadronamiento activo (Borrado protegido)' : 'Módulo Consulta: Búsqueda por DNIe 3.0, Ubigeo y Huella AFIS'}
               </p>
@@ -567,7 +661,6 @@
             ` : ''}
           </div>
 
-          <!-- Chips de Filtro por Departamento (Ubigeo) -->
           <div>
             <div class="text-xs font-bold text-[#C9B6D9] mb-1.5">📍 Filtrar Padrón por Departamento (Ubigeo INEI/RENIEC):</div>
             <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
@@ -582,7 +675,6 @@
             </div>
           </div>
 
-          <!-- Buscador por DNI o Apellidos -->
           <div class="flex gap-2">
             <input
               type="text"
@@ -593,10 +685,9 @@
             />
           </div>
 
-          <!-- Formulario Crear/Editar Ciudadano -->
           ${state.mostrarFormCiudadano && puedeEscribir ? `
             <form onsubmit="guardarCiudadano(event)" class="p-4 rounded-2xl bg-[#231033] border border-[#C6FF00]/50 space-y-3">
-              <h3 class="text-sm font-extrabold text-[#C6FF00]">${state.editandoCiudadanoId ? 'Editar Ficha Ciudadana RENIEC' : 'Empadronar Nuevo Ciudadano'}</h3>
+              <h3 class="text-sm font-extrabold text-[#C6FF00]">${state.editandoCiudadanoId ? 'Editar Ficha Ciudadana en Supabase' : 'Empadronar Nuevo Ciudadano en Supabase'}</h3>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <input type="text" maxlength="8" placeholder="DNI (8 dígitos)" value="${state.formCiudadano.dni}" oninput="state.formCiudadano.dni = this.value" class="px-3 py-2 rounded-xl bg-[#160821] border border-[#3d1e57] text-xs" required />
                 <input type="text" placeholder="Nombres Completos" value="${state.formCiudadano.nombres}" oninput="state.formCiudadano.nombres = this.value.toUpperCase()" class="px-3 py-2 rounded-xl bg-[#160821] border border-[#3d1e57] text-xs" required />
@@ -614,13 +705,12 @@
               <input type="text" placeholder="Ubigeo Oficial" value="${state.formCiudadano.ubigeo}" oninput="state.formCiudadano.ubigeo = this.value" class="w-full px-3 py-2 rounded-xl bg-[#160821] border border-[#3d1e57] text-xs" required />
               <input type="text" placeholder="Dirección Domiciliaria Actual" value="${state.formCiudadano.direccion}" oninput="state.formCiudadano.direccion = this.value.toUpperCase()" class="w-full px-3 py-2 rounded-xl bg-[#160821] border border-[#3d1e57] text-xs" required />
               <div class="flex gap-2">
-                <button type="submit" class="flex-1 py-2 rounded-xl bg-[#C6FF00] text-[#14071E] font-extrabold text-xs">Guardar en Padrón</button>
+                <button type="submit" class="flex-1 py-2 rounded-xl bg-[#C6FF00] text-[#14071E] font-extrabold text-xs">Guardar en Supabase Cloud</button>
                 <button type="button" onclick="state.mostrarFormCiudadano = false; render();" class="flex-1 py-2 rounded-xl border border-[#C9B6D9]/40 text-xs font-bold">Cancelar</button>
               </div>
             </form>
           ` : ''}
 
-          <!-- Tarjeta Interactiva DNIe 3.0 (Gira Anverso / Reverso MRZ + QR) -->
           ${seleccionado ? `
             <div onclick="state.dniReverso = !state.dniReverso; render();" class="p-4 rounded-2xl bg-gradient-to-br from-[#4B125E] to-[#2c0b3a] border border-[#C6FF00]/40 shadow-xl cursor-pointer transition">
               <div class="flex justify-between items-center border-b border-white/15 pb-2.5 mb-3">
@@ -684,7 +774,6 @@
             </div>
           ` : ''}
 
-          <!-- Lista de Ciudadanos Filtrados -->
           <div class="text-xs font-bold text-[#C9B6D9]">
             Ciudadanos en ${state.filtroDepartamento === 'TODOS' ? 'Todo el Perú' : state.filtroDepartamento} (${filtrados.length})
           </div>
@@ -729,7 +818,7 @@
         <div class="space-y-4">
           <div class="flex items-center justify-between gap-2">
             <div>
-              <h2 class="text-base sm:text-lg font-extrabold">Gestión de Trámites por Ubigeo RENIEC</h2>
+              <h2 class="text-base sm:text-lg font-extrabold">Gestión de Trámites por Ubigeo • Supabase Cloud</h2>
               <p class="text-xs text-[#C6FF00]">
                 ${puedeEliminar ? 'Rol Admin: Crear, Editar, Aprobar/Atender y Eliminar habilitados' : puedeEscribir ? 'Rol Brigadista: Creación y edición Offline-First habilitadas' : 'Módulo Consulta: Visualización de etapas del trámite por Sede'}
               </p>
@@ -741,7 +830,6 @@
             ` : ''}
           </div>
 
-          <!-- Filtro por Departamento -->
           <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
             ${DEPARTAMENTOS.map(dep => `
               <button
@@ -753,7 +841,6 @@
             `).join('')}
           </div>
 
-          <!-- Filtro por Estado -->
           <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
             ${["TODOS", ...ESTADOS_TRAMITE].map(est => `
               <button
@@ -767,7 +854,7 @@
 
           ${state.mostrarFormTramite && puedeEscribir ? `
             <form onsubmit="guardarTramite(event)" class="p-4 rounded-2xl bg-[#231033] border border-[#C6FF00]/50 space-y-3">
-              <h3 class="text-sm font-extrabold text-[#C6FF00]">${state.editandoTramiteId ? 'Actualizar Trámite DNI' : 'Registrar Solicitud de Trámite DNI'}</h3>
+              <h3 class="text-sm font-extrabold text-[#C6FF00]">${state.editandoTramiteId ? 'Actualizar Trámite DNI en Supabase' : 'Registrar Solicitud de Trámite DNI en Supabase'}</h3>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <input type="text" maxlength="8" placeholder="DNI del Ciudadano (8 dígitos)" value="${state.formTramite.dniCiudadano}" oninput="state.formTramite.dniCiudadano = this.value" class="px-3 py-2 rounded-xl bg-[#160821] border border-[#3d1e57] text-xs" required />
                 <input type="text" placeholder="Apellidos y Nombres" value="${state.formTramite.nombreCiudadano}" oninput="state.formTramite.nombreCiudadano = this.value.toUpperCase()" class="px-3 py-2 rounded-xl bg-[#160821] border border-[#3d1e57] text-xs" required />
@@ -788,7 +875,7 @@
               </div>
               <input type="text" placeholder="Sustento / Observaciones" value="${state.formTramite.observaciones}" oninput="state.formTramite.observaciones = this.value" class="w-full px-3 py-2 rounded-xl bg-[#160821] border border-[#3d1e57] text-xs" required />
               <div class="flex gap-2">
-                <button type="submit" class="flex-1 py-2 rounded-xl bg-[#C6FF00] text-[#14071E] font-extrabold text-xs">Guardar Trámite</button>
+                <button type="submit" class="flex-1 py-2 rounded-xl bg-[#C6FF00] text-[#14071E] font-extrabold text-xs">Guardar en Supabase Cloud</button>
                 <button type="button" onclick="state.mostrarFormTramite = false; render();" class="flex-1 py-2 rounded-xl border border-[#C9B6D9]/40 text-xs font-bold">Cancelar</button>
               </div>
             </form>
@@ -803,12 +890,11 @@
                 <div class="p-4 rounded-2xl bg-[#231033] border border-[#3d1e57] space-y-2.5">
                   <div class="flex justify-between items-center">
                     <div class="text-sm font-extrabold">DNI ${t.dniCiudadano} • ${t.nombreCiudadano}</div>
-                    <span class="px-2.5 py-0.5 rounded-lg bg-[#2E1647] text-[#C6FF00] text-[11px] font-bold">✓ Sincronizado</span>
+                    <span class="px-2.5 py-0.5 rounded-lg bg-[#2E1647] text-[#C6FF00] text-[11px] font-bold">⚡ Supabase Cloud</span>
                   </div>
                   <div class="text-xs text-[#C6FF00] font-semibold">
                     Tipo: ${tipo.etiqueta} (Tasa S/ ${tipo.costo}.00) | Estado: ${t.estado}
                   </div>
-                  <!-- Stepper de 3 etapas -->
                   <div class="grid grid-cols-3 gap-1.5 text-center text-[11px] font-bold">
                     <div class="py-1 rounded-md ${nivel >= 1 ? 'bg-[#C6FF00] text-[#14071E]' : 'bg-[#311747] text-gray-400'}">1. Recibido</div>
                     <div class="py-1 rounded-md ${nivel >= 2 ? 'bg-[#C6FF00] text-[#14071E]' : 'bg-[#311747] text-gray-400'}">2. Procesando</div>
@@ -845,10 +931,11 @@
           </div>
 
           <div class="p-5 rounded-2xl bg-[#231033] border border-[#3d1e57] space-y-2">
-            <h3 class="text-base font-extrabold text-[#40C4FF]">☁️ Arquitectura Híbrida Cloudflare Pages + Android KMP</h3>
+            <h3 class="text-base font-extrabold text-[#40C4FF]">☁️ Arquitectura Híbrida Supabase + Cloudflare + Android KMP</h3>
+            <p class="text-xs text-[#C9B6D9]">• Endpoint Supabase: <span class="mono text-[#C6FF00]">vktclzpkebwvfbrvtpxo.supabase.co</span></p>
             <p class="text-xs text-[#C9B6D9]">• Plataforma Web: Cloudflare Pages Edge CDN</p>
             <p class="text-xs text-[#C9B6D9]">• App Móvil: Kotlin Multiplatform + Compose Multiplatform + SQLDelight Offline</p>
-            <p class="text-xs text-[#C6FF00] font-bold">• Catálogo Oficial de Ubigeos INEI/RENIEC activo (10 sedes nacionales)</p>
+            <p class="text-xs text-[#C6FF00] font-bold">• Sincronización bidireccional en vivo entre tu celular y la web</p>
           </div>
 
           <button onclick="cerrarSesion()" class="w-full py-3.5 rounded-xl bg-[#FF5252] text-white font-extrabold text-sm shadow-lg">
@@ -862,7 +949,6 @@
       const s = state.sesion;
       const titulos = { inicio: "Inicio", padron: "Padrón DNI", tramites: "Trámites", perfil: "Perfil" };
       return `
-        <!-- TopAppBar con degradado púrpura y rombo 45° -->
         <header class="topbar-gradient px-5 py-3.5 flex items-center justify-between shadow-md">
           <div class="flex items-center gap-3">
             <div class="w-7 h-7 rotate-45 border-2 border-[#C6FF00] rounded-md flex items-center justify-center">
@@ -877,7 +963,6 @@
           </button>
         </header>
 
-        <!-- Contenido Principal -->
         <main class="flex-1 p-4 sm:p-6 overflow-y-auto">
           ${state.tabActual === "inicio" ? renderInicio() : ""}
           ${state.tabActual === "padron" ? renderPadron() : ""}
@@ -885,7 +970,6 @@
           ${state.tabActual === "perfil" ? renderPerfil() : ""}
         </main>
 
-        <!-- NavigationBar Inferior estilo Cyber-Purple & Lima Neón -->
         <nav class="bg-[#231033] border-t border-[#3d1e57] px-3 py-2 grid grid-cols-4 gap-2">
           ${[
             { id: "inicio", label: "Inicio", icon: "🏠" },
@@ -911,6 +995,7 @@
     }
 
     render();
+    sincronizarConSupabase();
   </script>
 </body>
 </html>

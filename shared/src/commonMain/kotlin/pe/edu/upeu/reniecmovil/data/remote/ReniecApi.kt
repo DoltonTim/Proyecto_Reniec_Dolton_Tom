@@ -7,13 +7,13 @@ import io.ktor.client.plugins.HttpRequestTimeoutException
 import io.ktor.client.plugins.ServerResponseException
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
+import io.ktor.client.request.patch
 import io.ktor.client.request.post
-import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import kotlinx.coroutines.CancellationException
 import pe.edu.upeu.reniecmovil.data.remote.dto.CiudadanoDto
 import pe.edu.upeu.reniecmovil.data.remote.dto.TramiteDto
-import pe.edu.upeu.reniecmovil.data.remote.dto.toDto
+import pe.edu.upeu.reniecmovil.data.remote.dto.toPayloadDto
 import pe.edu.upeu.reniecmovil.domain.error.ErrorApi
 import pe.edu.upeu.reniecmovil.domain.error.ErrorApiException
 import pe.edu.upeu.reniecmovil.domain.model.Ciudadano
@@ -26,7 +26,7 @@ suspend fun <T> ejecutarLlamadaRemota(bloque: suspend () -> T): T = try {
 } catch (e: ClientRequestException) {
     val error = when (e.response.status.value) {
         404 -> ErrorApi.NoEncontrado
-        409 -> ErrorApi.Conflicto("Conflicto en el registro remoto")
+        409 -> ErrorApi.Conflicto("Conflicto en el registro remoto (DNI duplicado)")
         else -> ErrorApi.Servidor
     }
     throw ErrorApiException(error)
@@ -42,12 +42,17 @@ open class CiudadanoApi(
     private val client: HttpClient
 ) {
     open suspend fun listar(): List<Ciudadano> = ejecutarLlamadaRemota {
-        client.get("ciudadanos").body<List<CiudadanoDto>>().map { it.toDomain() }
+        client.get("ciudadanos?select=*&order=id.desc")
+            .body<List<CiudadanoDto>>()
+            .map { it.toDomain() }
     }
 
     open suspend fun buscarPorDni(dni: String): Ciudadano? = try {
         ejecutarLlamadaRemota {
-            client.get("ciudadanos/dni/$dni").body<CiudadanoDto>().toDomain()
+            client.get("ciudadanos?dni=eq.$dni&select=*")
+                .body<List<CiudadanoDto>>()
+                .firstOrNull()
+                ?.toDomain()
         }
     } catch (e: ErrorApiException) {
         if (e.error is ErrorApi.NoEncontrado) null else throw e
@@ -55,18 +60,18 @@ open class CiudadanoApi(
 
     open suspend fun registrar(ciudadano: Ciudadano): Ciudadano = ejecutarLlamadaRemota {
         client.post("ciudadanos") {
-            setBody(ciudadano.toDto())
-        }.body<CiudadanoDto>().toDomain()
+            setBody(ciudadano.toPayloadDto())
+        }.body<List<CiudadanoDto>>().first().toDomain()
     }
 
     open suspend fun actualizar(ciudadano: Ciudadano): Ciudadano = ejecutarLlamadaRemota {
-        client.put("ciudadanos/${ciudadano.id}") {
-            setBody(ciudadano.toDto())
-        }.body<CiudadanoDto>().toDomain()
+        client.patch("ciudadanos?id=eq.${ciudadano.id}") {
+            setBody(ciudadano.toPayloadDto())
+        }.body<List<CiudadanoDto>>().firstOrNull()?.toDomain() ?: ciudadano
     }
 
     open suspend fun eliminar(id: Long) = ejecutarLlamadaRemota {
-        client.delete("ciudadanos/$id")
+        client.delete("ciudadanos?id=eq.$id")
         Unit
     }
 }
@@ -75,23 +80,25 @@ open class TramiteApi(
     private val client: HttpClient
 ) {
     open suspend fun listar(): List<TramiteDni> = ejecutarLlamadaRemota {
-        client.get("tramites").body<List<TramiteDto>>().map { it.toDomain() }
+        client.get("tramites?select=*&order=id.desc")
+            .body<List<TramiteDto>>()
+            .map { it.toDomain() }
     }
 
     open suspend fun registrar(tramite: TramiteDni): TramiteDni = ejecutarLlamadaRemota {
         client.post("tramites") {
-            setBody(tramite.toDto())
-        }.body<TramiteDto>().toDomain()
+            setBody(tramite.toPayloadDto())
+        }.body<List<TramiteDto>>().first().toDomain()
     }
 
     open suspend fun actualizar(tramite: TramiteDni): TramiteDni = ejecutarLlamadaRemota {
-        client.put("tramites/${tramite.id}") {
-            setBody(tramite.toDto())
-        }.body<TramiteDto>().toDomain()
+        client.patch("tramites?id=eq.${tramite.id}") {
+            setBody(tramite.toPayloadDto())
+        }.body<List<TramiteDto>>().firstOrNull()?.toDomain() ?: tramite
     }
 
     open suspend fun eliminar(id: Long) = ejecutarLlamadaRemota {
-        client.delete("tramites/$id")
+        client.delete("tramites?id=eq.$id")
         Unit
     }
 }

@@ -3,24 +3,22 @@ package pe.edu.upeu.reniecmovil.data.remote
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.plugins.HttpTimeout
-import io.ktor.client.plugins.auth.Auth
-import io.ktor.client.plugins.auth.providers.BearerTokens
-import io.ktor.client.plugins.auth.providers.bearer
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logger
 import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.plugins.logging.SIMPLE
+import io.ktor.client.request.header
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
-import io.ktor.http.encodedPath
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 import pe.edu.upeu.reniecmovil.data.local.AlmacenSeguro
 
-const val URL_BASE_RENIEC = "http://10.0.2.2:8080/api/v1/"
+const val URL_BASE_RENIEC = "https://vktclzpkebwvfbrvtpxo.supabase.co/rest/v1/"
+const val SUPABASE_PUBLISHABLE_KEY = "sb_publishable_R4lNuJJ9kfF9LGuUlbLLgA_MkQIJQ5B"
 
 fun crearHttpClient(
     motor: HttpClientEngine,
@@ -38,32 +36,20 @@ fun crearHttpClient(
     }
 
     install(HttpTimeout) {
-        requestTimeoutMillis = 8000
-        connectTimeoutMillis = 5000
+        requestTimeoutMillis = 10000
+        connectTimeoutMillis = 6000
     }
 
     defaultRequest {
         url(URL_BASE_RENIEC)
         contentType(ContentType.Application.Json)
-    }
-
-    install(Auth) {
-        bearer {
-            loadTokens {
-                almacen.leerToken()?.let { raw ->
-                    val tokenPuro = raw.substringAfter("|", raw)
-                    BearerTokens(tokenPuro, "")
-                }
-            }
-            sendWithoutRequest { peticion ->
-                !peticion.url.encodedPath.endsWith("/auth/login")
-            }
-        }
+        header("apikey", SUPABASE_PUBLISHABLE_KEY)
+        header("Prefer", "return=representation")
     }
 
     install(Logging) {
         logger = Logger.SIMPLE
         level = if (esDepuracion) LogLevel.HEADERS else LogLevel.NONE
-        sanitizeHeader { nombre -> nombre == HttpHeaders.Authorization }
+        sanitizeHeader { nombre -> nombre == HttpHeaders.Authorization || nombre == "apikey" }
     }
 }
