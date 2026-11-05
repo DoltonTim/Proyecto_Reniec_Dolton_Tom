@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reniec Móvil • Sistema Nacional de Identificación (UPeU)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --stori-top: #8C0B42;
+      --stori-mid: #640D5F;
+      --stori-bg: #160821;
+      --stori-card: #231033;
+      --stori-card-alt: #311747;
+      --stori-lime: #C6FF00;
+      --stori-cyan: #40C4FF;
+    }
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #0e0416;
+      color: #ffffff;
+      margin: 0;
+      padding: 0;
+    }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    .login-gradient {
+      background: linear-gradient(180deg, #8C0B42 0%, #640D5F 40%, #1A0926 100%);
+    }
+    .topbar-gradient {
+      background: linear-gradient(90deg, #8C0B42 0%, #640D5F 100%);
+    }
+    .stori-peak {
+      clip-path: polygon(0 28%, 43% 14%, 50% 12%, 57% 14%, 100% 28%, 100% 100%, 0% 100%);
+    }
+    .input-underline {
+      background: transparent;
+      border: none;
+      border-bottom: 1.5px solid rgba(201, 182, 217, 0.45);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .input-underline:focus {
+      border-bottom: 2px solid #C6FF00;
+    }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-0 sm:p-4">
+
+  <!-- Contenedor Principal (Modo Teléfono en Desktop o Pantalla Completa en Móvil) -->
+  <div id="app-root" class="w-full max-w-md sm:max-w-5xl min-h-screen sm:min-h-[860px] bg-[#160821] sm:rounded-3xl sm:shadow-2xl sm:border sm:border-[#3d1e57] overflow-hidden flex flex-col relative">
+  </div>
+
+  <!-- Modal AFIS / Ayuda / Confirmación -->
+  <div id="modal-root" class="fixed inset-0 bg-black/75 z-50 hidden items-center justify-center p-4"></div>
+
+  <script>
+    // =========================================================================
+    // 1. CATÁLOGO OFICIAL DE UBIGEOS INEI / RENIEC
+    // =========================================================================
+    const SEDES_UBIGEO = [
+      { codigo: "150118", departamento: "LIMA", provincia: "LIMA", distrito: "LURIGANCHO-CHOSICA", agencia: "Agencia RENIEC Ñaña - Carretera Central" },
+      { codigo: "150103", departamento: "LIMA", provincia: "LIMA", distrito: "ATE", agencia: "Agencia RENIEC Santa Clara - Ate" },
+      { codigo: "150101", departamento: "LIMA", provincia: "LIMA", distrito: "CERCADO DE LIMA", agencia: "Sede Central RENIEC Jr. Bolivia" },
+      { codigo: "211101", departamento: "PUNO", provincia: "SAN ROMAN", distrito: "JULIACA", agencia: "Agencia Regional RENIEC Juliaca" },
+      { codigo: "210101", departamento: "PUNO", provincia: "PUNO", distrito: "PUNO", agencia: "Oficina Registral RENIEC Puno" },
+      { codigo: "120114", departamento: "JUNIN", provincia: "HUANCAYO", distrito: "EL TAMBO", agencia: "Agencia RENIEC Huancayo - El Tambo" },
+      { codigo: "220901", departamento: "SAN MARTIN", provincia: "SAN MARTIN", distrito: "TARAPOTO", agencia: "Oficina Registral RENIEC Tarapoto" },
+      { codigo: "080101", departamento: "CUSCO", provincia: "CUSCO", distrito: "CUSCO", agencia: "Oficina Registral RENIEC Cusco" },
+      { codigo: "040101", departamento: "AREQUIPA", provincia: "AREQUIPA", distrito: "AREQUIPA", agencia: "Oficina Registral RENIEC Arequipa" },
+      { codigo: "160101", departamento: "LORETO", provincia: "MAYNAS", distrito: "IQUITOS", agencia: "Brigada Fluvial RENIEC Iquitos" }
+    ];
+
+    const DEPARTAMENTOS = ["TODOS", ...new Set(SEDES_UBIGEO.map(s => s.departamento))];
+
+    const TIPOS_TRAMITE = [
+      { id: "INSCRIPCION", etiqueta: "Inscripción por Primera Vez", costo: 16 },
+      { id: "RENOVACION", etiqueta: "Renovación de DNI / DNIe", costo: 41 },
+      { id: "DUPLICADO", etiqueta: "Duplicado de DNI", costo: 24 },
+      { id: "RECTIFICACION", etiqueta: "Rectificación de Datos", costo: 24 },
+      { id: "CAMBIO_DOMICILIO", etiqueta: "Actualización de Domicilio", costo: 34 }
+    ];
+
+    const ESTADOS_TRAMITE = ["PENDIENTE", "EN_PROCESO", "OBSERVADO", "ATENDIDO"];
+
+    // =========================================================================
+    // 2. ROLES RBAC (MISMOS 3 USUARIOS QUE ANDROID Y SPRING BOOT)
+    // =========================================================================
+    const USUARIOS_RBAC = {
+      admin: {
+        clave: "Admin123!",
+        usuario: "admin",
+        nombreCompleto: "Ing. Carlos Mendoza (Administrador General)",
+        cargo: "Jefe de Registro Civil y Supervisión",
+        sede: "Sede Central RENIEC - Lima",
+        permisos: ["ROLE_ADMIN", "PADRON_LEER", "PADRON_ESCRIBIR", "PADRON_ELIMINAR", "TRAMITES_LEER", "TRAMITES_ESCRIBIR", "TRAMITES_APROBAR", "TRAMITES_ELIMINAR", "RECAUDACION_VER"]
+      },
+      dolton: {
+        clave: "Reniec2026!",
+        usuario: "dolton",
+        nombreCompleto: "Brigadista Dolton Tom Meza Quispe",
+        cargo: "Registrador de Brigada Itinerante",
+        sede: "Brigada Móvil UPeU - Lurigancho Ñaña",
+        permisos: ["ROLE_BRIGADISTA", "PADRON_LEER", "PADRON_ESCRIBIR", "TRAMITES_LEER", "TRAMITES_ESCRIBIR"]
+      },
+      verificador: {
+        clave: "Verifica2026!",
+        usuario: "verificador",
+        nombreCompleto: "Lic. Ana Torres (Módulo Consulta)",
+        cargo: "Verificador Biométrico AFIS y Ventanilla",
+        sede: "Agencia RENIEC Ate - Vitarte",
+        permisos: ["ROLE_VERIFICADOR", "PADRON_LEER", "TRAMITES_LEER"]
+      }
+    };
+
+    // =========================================================================
+    // 3. DATOS SEMILLA INICIALES (SINCRONIZADOS CON ANDROID / SQLDELIGHT)
+    // =========================================================================
+    const CIUDADANOS_INICIALES = [
+      { id: 1, dni: "72345678", nombres: "DOLTON TOM", apellidoPaterno: "MEZA", apellidoMaterno: "QUISPE", fechaNacimiento: "2001-05-14", estadoCivil: "SOLTERO", ubigeo: "150118 - LIMA / LIMA / LURIGANCHO-CHOSICA", direccion: "CARRETERA CENTRAL KM 19.5 VILLA UNION - ÑAÑA", donacionOrganos: true },
+      { id: 2, dni: "45896321", nombres: "MARIA ELENA", apellidoPaterno: "PAREDES", apellidoMaterno: "MENDOZA", fechaNacimiento: "1995-08-22", estadoCivil: "CASADO", ubigeo: "120114 - JUNIN / HUANCAYO / EL TAMBO", direccion: "AV. REAL 1240 URB. SAN CARLOS", donacionOrganos: true },
+      { id: 3, dni: "70124589", nombres: "JORGE LUIS", apellidoPaterno: "HUAMAN", apellidoMaterno: "ROJAS", fechaNacimiento: "1998-11-03", estadoCivil: "SOLTERO", ubigeo: "211101 - PUNO / SAN ROMAN / JULIACA", direccion: "JR. MARIANO NUÑEZ 450", donacionOrganos: false },
+      { id: 4, dni: "41258796", nombres: "ROSA VICTORIA", apellidoPaterno: "CASTILLO", apellidoMaterno: "VARGAS", fechaNacimiento: "1989-02-19", estadoCivil: "SOLTERO", ubigeo: "220901 - SAN MARTIN / SAN MARTIN / TARAPOTO", direccion: "JR. JIMENEZ PIMENTEL 890", donacionOrganos: true },
+      { id: 5, dni: "76543210", nombres: "CARLOS ALBERTO", apellidoPaterno: "SANCHEZ", apellidoMaterno: "GAMARRA", fechaNacimiento: "2003-07-30", estadoCivil: "SOLTERO", ubigeo: "150103 - LIMA / LIMA / ATE", direccion: "AV. NICOLAS AYLLON 3420 SANTA CLARA", donacionOrganos: true }
+    ];
+
+    const TRAMITES_INICIALES = [
+      { id: 1, dniCiudadano: "72345678", nombreCiudadano: "DOLTON TOM MEZA QUISPE", tipoTramite: "RENOVACION", estado: "ATENDIDO", ubigeoDestino: "150118 - LIMA / LIMA / LURIGANCHO-CHOSICA (Agencia RENIEC Ñaña)", observaciones: "Renovación a DNI Electrónico 3.0 con firma digital activa", fechaRegistro: "2026-11-01" },
+      { id: 2, dniCiudadano: "45896321", nombreCiudadano: "MARIA ELENA PAREDES MENDOZA", tipoTramite: "CAMBIO_DOMICILIO", estado: "EN_PROCESO", ubigeoDestino: "120114 - JUNIN / HUANCAYO / EL TAMBO", observaciones: "Actualización de dirección domiciliaria con recibo verificado", fechaRegistro: "2026-11-02" },
+      { id: 3, dniCiudadano: "70124589", nombreCiudadano: "JORGE LUIS HUAMAN ROJAS", tipoTramite: "DUPLICADO", estado: "PENDIENTE", ubigeoDestino: "211101 - PUNO / SAN ROMAN / JULIACA", observaciones: "Solicitud de duplicado por pérdida en campaña itinerante", fechaRegistro: "2026-11-03" }
+    ];
+
+    // =========================================================================
+    // 4. ESTADO REACTIVO DE LA APLICACIÓN WEB
+    // =========================================================================
+    const state = {
+      sesion: JSON.parse(localStorage.getItem("reniec_sesion") || "null"),
+      loginUsuario: "",
+      loginClave: "",
+      mostrarClave: false,
+      loginError: null,
+      tabActual: "inicio", // inicio | padron | tramites | perfil
+      ciudadanos: JSON.parse(localStorage.getItem("reniec_ciudadanos") || JSON.stringify(CIUDADANOS_INICIALES)),
+      tramites: JSON.parse(localStorage.getItem("reniec_tramites") || JSON.stringify(TRAMITES_INICIALES)),
+      filtroDepartamento: "TODOS",
+      filtroTexto: "",
+      ciudadanoSeleccionadoId: 1,
+      dniReverso: false,
+      mostrarFormCiudadano: false,
+      editandoCiudadanoId: null,
+      formCiudadano: { dni: "", nombres: "", apellidoPaterno: "", apellidoMaterno: "", fechaNacimiento: "2000-01-15", estadoCivil: "SOLTERO", ubigeo: "150118 - LIMA / LIMA / LURIGANCHO-CHOSICA", direccion: "", donacionOrganos: true },
+      filtroDepTramite: "TODOS",
+      filtroEstadoTramite: "TODOS",
+      filtroTextoTramite: "",
+      mostrarFormTramite: false,
+      editandoTramiteId: null,
+      formTramite: { dniCiudadano: "", nombreCiudadano: "", tipoTramite: "RENOVACION", estado: "PENDIENTE", ubigeoDestino: "150118 - LIMA / LIMA / LURIGANCHO-CHOSICA", observaciones: "" },
+      avisoToast: null,
+      supabaseUrl: localStorage.getItem("reniec_sb_url") || "",
+      supabaseKey: localStorage.getItem("reniec_sb_key") || "",
+      supabaseConectado: false
+    };
+
+    function guardarStorage() {
+      localStorage.setItem("reniec_ciudadanos", JSON.stringify(state.ciudadanos));
+      localStorage.setItem("reniec_tramites", JSON.stringify(state.tramites));
+      if (state.sesion) {
+        localStorage.setItem("reniec_sesion", JSON.stringify(state.sesion));
+      } else {
+        localStorage.removeItem("reniec_sesion");
+      }
+    }
+
+    function tienePermiso(permiso) {
+      return state.sesion && state.sesion.permisos.includes(permiso);
+    }
+
+    function buscarUbigeo(texto) {
+      const upper = (texto || "").toUpperCase();
+      return SEDES_UBIGEO.find(s => upper.includes(s.codigo) || upper.includes(s.distrito)) ||
+             SEDES_UBIGEO.find(s => upper.includes(s.departamento)) ||
+             SEDES_UBIGEO[0];
+    }
+
+    function mostrarModal(titulo, mensaje) {
+      const modal = document.getElementById("modal-root");
+      modal.innerHTML = `
+        <div class="bg-[#231033] border border-[#5d2c85] rounded-2xl max-w-md w-full p-6 shadow-2xl">
+          <h3 class="text-lg font-extrabold text-[#C6FF00] mb-2">${titulo}</h3>
+          <div class="text-sm text-gray-200 space-y-2">${mensaje}</div>
+          <div class="mt-5 flex justify-end">
+            <button onclick="cerrarModal()" class="px-5 py-2 rounded-xl bg-[#C6FF00] text-[#14071E] font-extrabold text-sm">Entendido</button>
+          </div>
+        </div>
+      `;
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
+    }
+
+    function cerrarModal() {
+      const modal = document.getElementById("modal-root");
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
+    }
+
+    function mostrarAfis(idCiudadano) {
+      const c = state.ciudadanos.find(x => x.id === idCiudadano);
+      if (!c) return;
+      const ub = buscarUbigeo(c.ubigeo);
+      mostrarModal(
+        "Verificación Biométrica AFIS • RENIEC",
+        `
+          <div class="p-3 rounded-xl bg-[#311747] border border-[#C6FF00]/40 flex items-center gap-3 mb-3">
+            <span class="text-2xl">🧬</span>
+            <div>
+              <div class="text-[#C6FF00] font-extrabold text-xs">IDENTIDAD VERIFICADA (99.8% Match)</div>
+              <div class="text-xs text-gray-300">Dedo Índice Derecho • Minucias: 42/42</div>
+            </div>
+          </div>
+          <p><b>Ciudadano:</b> ${c.nombres} ${c.apellidoPaterno} ${c.apellidoMaterno}</p>
+          <p><b>DNI / CUI:</b> ${c.dni}</p>
+          <p><b>Ubigeo INEI:</b> ${ub.codigo} - ${ub.departamento} / ${ub.provincia} / ${ub.distrito}</p>
+          <p><b>Sede Registral:</b> ${ub.agencia}</p>
+          <p class="text-[#40C4FF] font-bold">Estado Padrón: HÁBIL SIN RESTRICCIONES</p>
+        `
+      );
+    }
+
+    // =========================================================================
+    // 5. ACCIONES DE NEGOCIO
+    // =========================================================================
+    function ejecutarLogin(e) {
+      if (e) e.preventDefault();
+      const u = state.loginUsuario.trim().toLowerCase();
+      const p = state.loginClave;
+      const cuenta = USUARIOS_RBAC[u];
+      if (!cuenta || cuenta.clave !== p) {
+        state.loginError = "Credenciales inválidas. Verifique su usuario y contraseña institucional.";
+        render();
+        return;
+      }
+      state.sesion = cuenta;
+      state.loginError = null;
+      state.loginUsuario = "";
+      state.loginClave = "";
+      guardarStorage();
+      render();
+    }
+
+    function cerrarSesion() {
+      state.sesion = null;
+      state.tabActual = "inicio";
+      guardarStorage();
+      render();
+    }
+
+    function guardarCiudadano(e) {
+      e.preventDefault();
+      const f = state.formCiudadano;
+      if (!/^\d{8}$/.test(f.dni.trim())) {
+        mostrarModal("Validación de Padrón", "El número de DNI debe tener exactamente 8 dígitos numéricos.");
+        return;
+      }
+      if (!f.nombres.trim() || !f.apellidoPaterno.trim() || !f.direccion.trim()) {
+        mostrarModal("Validación de Padrón", "Complete los nombres, apellidos y dirección domiciliaria.");
+        return;
+      }
+      if (state.editandoCiudadanoId) {
+        state.ciudadanos = state.ciudadanos.map(c => c.id === state.editandoCiudadanoId ? { ...f, id: c.id } : c);
+        state.ciudadanoSeleccionadoId = state.editandoCiudadanoId;
+      } else {
+        const nuevoId = Math.max(0, ...state.ciudadanos.map(c => c.id)) + 1;
+        const nuevo = { ...f, id: nuevoId };
+        state.ciudadanos = [nuevo, ...state.ciudadanos];
+        state.ciudadanoSeleccionadoId = nuevoId;
+      }
+      state.mostrarFormCiudadano = false;
+      state.editandoCiudadanoId = null;
+      guardarStorage();
+      render();
+    }
+
+    function eliminarCiudadano(id) {
+      if (!tienePermiso("PADRON_ELIMINAR")) return;
+      state.ciudadanos = state.ciudadanos.filter(c => c.id !== id);
+      if (state.ciudadanoSeleccionadoId === id) {
+        state.ciudadanoSeleccionadoId = state.ciudadanos[0]?.id || null;
+      }
+      guardarStorage();
+      render();
+    }
+
+    function iniciarTramiteDesdeCiudadano(idCiudadano) {
+      const c = state.ciudadanos.find(x => x.id === idCiudadano);
+      if (!c) return;
+      state.formTramite = {
+        dniCiudadano: c.dni,
+        nombreCiudadano: `${c.nombres} ${c.apellidoPaterno} ${c.apellidoMaterno}`,
+        tipoTramite: "RENOVACION",
+        estado: "PENDIENTE",
+        ubigeoDestino: c.ubigeo,
+        observaciones: "Trámite generado desde consulta de Padrón DNIe 3.0"
+      };
+      state.editandoTramiteId = null;
+      state.mostrarFormTramite = true;
+      state.tabActual = "tramites";
+      render();
+    }
+
+    function guardarTramite(e) {
+      e.preventDefault();
+      const f = state.formTramite;
+      if (!/^\d{8}$/.test(f.dniCiudadano.trim()) || !f.nombreCiudadano.trim()) {
+        mostrarModal("Validación de Trámite", "Ingrese un DNI válido de 8 dígitos y el nombre del ciudadano.");
+        return;
+      }
+      const hoy = new Date().toISOString().slice(0, 10);
+      if (state.editandoTramiteId) {
+        state.tramites = state.tramites.map(t => t.id === state.editandoTramiteId ? { ...f, id: t.id, fechaRegistro: t.fechaRegistro } : t);
+      } else {
+        const nuevoId = Math.max(0, ...state.tramites.map(t => t.id)) + 1;
+        state.tramites = [{ ...f, id: nuevoId, fechaRegistro: hoy }, ...state.tramites];
+      }
+      state.mostrarFormTramite = false;
+      state.editandoTramiteId = null;
+      guardarStorage();
+      render();
+    }
+
+    function aprobarTramite(id) {
+      if (!tienePermiso("TRAMITES_APROBAR")) return;
+      state.tramites = state.tramites.map(t => t.id === id ? { ...t, estado: "ATENDIDO" } : t);
+      guardarStorage();
+      render();
+    }
+
+    function eliminarTramite(id) {
+      if (!tienePermiso("TRAMITES_ELIMINAR")) return;
+      state.tramites = state.tramites.filter(t => t.id !== id);
+      guardarStorage();
+      render();
+    }
+
+    // =========================================================================
+    // 6. VISTAS (LOGIN + DASHBOARD + PADRÓN + TRÁMITES + PERFIL)
+    // =========================================================================
+    function renderLogin() {
+      return `
+        <div class="flex-1 login-gradient relative flex flex-col items-center justify-between overflow-hidden min-h-screen sm:min-h-[860px]">
+          <!-- Superficie con pico diagonal tipo The Stori -->
+          <div class="absolute inset-0 bg-[#1A0926] stori-peak pointer-events-none"></div>
+
+          <!-- Cabecera Superior con Rombo 45° -->
+          <div class="relative z-10 pt-12 pb-6 px-6 flex items-center justify-center gap-5 w-full">
+            <div class="w-12 h-12 rotate-45 border-2 border-white rounded-xl p-1.5 flex items-center justify-center shadow-lg">
+              <div class="w-full h-full border border-[#C6FF00] rounded-md flex items-center justify-center">
+                <span class="-rotate-45 text-white text-lg">🪪</span>
+              </div>
+            </div>
+            <div>
+              <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">Reniec Móvil</h1>
+              <p class="text-xs sm:text-sm text-white/85 font-medium">Red Nacional de Identificación</p>
+            </div>
+          </div>
+
+          <!-- Formulario Central dentro del Pico Oscuro -->
+          <form onsubmit="ejecutarLogin(event)" class="relative z-10 w-full max-w-sm px-8 pb-12 pt-16 flex flex-col flex-1 justify-center">
+            <h2 class="text-3xl sm:text-4xl font-extrabold text-center text-white mb-9">Login</h2>
+
+            <div class="mb-6">
+              <label class="block text-xs font-bold text-white mb-1">Usuario</label>
+              <input
+                type="text"
+                value="${state.loginUsuario}"
+                oninput="state.loginUsuario = this.value"
+                placeholder="ej: usuario@reniec.gob.pe"
+                class="w-full py-2.5 text-sm text-white placeholder-[#BBA8C9]/60 input-underline"
+                required
+              />
+            </div>
+
+            <div class="mb-6">
+              <label class="block text-xs font-bold text-white mb-1">Password</label>
+              <div class="flex items-center border-b border-[#BBA8C9]/45 focus-within:border-[#C6FF00]">
+                <input
+                  type="${state.mostrarClave ? 'text' : 'password'}"
+                  value="${state.loginClave}"
+                  oninput="state.loginClave = this.value"
+                  placeholder="••••••••••••"
+                  class="w-full py-2.5 text-sm text-white placeholder-[#BBA8C9]/60 bg-transparent outline-none"
+                  required
+                />
+                <button type="button" onclick="state.mostrarClave = !state.mostrarClave; render();" class="text-xs text-[#BBA8C9] px-2">
+                  ${state.mostrarClave ? '🙈' : '👁️'}
+                </button>
+                <button type="button" onclick="mostrarModal('Seguridad Institucional RENIEC', 'Para restablecer tu clave institucional JWT, comunícate con la Oficina de Seguridad Informática de RENIEC.')" class="text-xs font-bold text-white underline whitespace-nowrap">
+                  ¿Olvidaste?
+                </button>
+              </div>
+            </div>
+
+            ${state.loginError ? `
+              <div class="mb-4 p-3 rounded-xl bg-[#4A1228] border border-[#FF5252] text-xs text-[#FFCDD2] font-semibold">
+                ${state.loginError}
+              </div>
+            ` : ''}
+
+            <button type="submit" class="w-full h-12 rounded-xl bg-[#C6FF00] hover:bg-[#d4ff33] text-[#14071E] font-extrabold text-base shadow-lg transition mt-2">
+              Login
+            </button>
+
+            <div class="flex items-center justify-center gap-3 my-7">
+              <div class="h-px w-10 bg-[#BBA8C9]/35"></div>
+              <span class="text-xs text-[#BBA8C9] font-medium">O ingresar con</span>
+              <div class="h-px w-10 bg-[#BBA8C9]/35"></div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3.5">
+              <button type="button" onclick="mostrarModal('Lectura DNIe 3.0 NFC', 'Acerca tu DNI Electrónico 3.0 al lector NFC para autenticación criptográfica PKI.')" class="h-11 rounded-xl border border-[#BBA8C9]/30 flex items-center justify-center gap-2 text-xs font-bold text-white hover:bg-white/5">
+                <span class="text-[#FF5252]">📡</span> DNIe NFC
+              </button>
+              <button type="button" onclick="mostrarModal('Biometría Dactilar AFIS', 'Conecta el lector óptico biométrico o utiliza el sensor de huella del equipo para validación AFIS.')" class="h-11 rounded-xl border border-[#BBA8C9]/30 flex items-center justify-center gap-2 text-xs font-bold text-white hover:bg-white/5">
+                <span class="text-[#40C4FF]">🧬</span> Huella AFIS
+              </button>
+            </div>
+
+            <p onclick="mostrarModal('Alta de Operadores RENIEC', 'El alta de nuevos operadores y brigadistas es gestionada exclusivamente por la Jefatura Regional de Registro Civil.')" class="text-center text-xs text-[#BBA8C9] mt-7 cursor-pointer">
+              ¿No tienes cuenta activa? <span class="text-white font-extrabold underline">Solicitar acceso</span>
+            </p>
+          </form>
+        </div>
+      `;
+    }
+
+    function renderInicio() {
+      const s = state.sesion;
+      const atendidos = state.tramites.filter(t => t.estado === "ATENDIDO").length;
+      const totalTramites = state.tramites.length;
+      const porcentaje = totalTramites ? Math.round((atendidos / totalTramites) * 100) : 0;
+      const recaudacion = state.tramites.reduce((acc, t) => {
+        const tipo = TIPOS_TRAMITE.find(x => x.id === t.tipoTramite);
+        return acc + (tipo ? tipo.costo : 24);
+      }, 0);
+      const puedeVerRecaudacion = tienePermiso("RECAUDACION_VER") || tienePermiso("ROLE_ADMIN");
+      const puedeEscribirTramite = tienePermiso("TRAMITES_ESCRIBIR");
+
+      return `
+        <div class="space-y-4">
+          <!-- Banner de Estado Cloud / Offline -->
+          <div class="p-4 rounded-2xl bg-[#2E1647] border border-[#5d2c85] flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <span class="text-2xl">☁️</span>
+              <div>
+                <div class="text-xs sm:text-sm font-extrabold text-[#C6FF00]">CONECTADO A CLOUDFLARE PAGES + PIDE RENIEC</div>
+                <div class="text-xs text-[#C9B6D9]">Sincronización multiplataforma Web & Android APK (JWT + SQLDelight)</div>
+              </div>
+            </div>
+            <button onclick="render()" class="px-3.5 py-2 rounded-xl bg-[#4B125E] text-white text-xs font-bold hover:bg-[#640D5F]">
+              🔄 Sync
+            </button>
+          </div>
+
+          <!-- Credencial del Operador -->
+          <div class="p-4 rounded-2xl bg-[#4B125E] flex items-center justify-between">
+            <div>
+              <h3 class="text-base sm:text-lg font-extrabold text-white">${s.nombreCompleto}</h3>
+              <p class="text-xs text-white/85">${s.cargo} • ${s.sede}</p>
+              <p class="text-xs font-extrabold mt-2 text-[#C6FF00]">
+                ${puedeVerRecaudacion
+                  ? `Recaudación Tasa Banco de la Nación: S/ ${recaudacion}.00`
+                  : `Modo Operativo: ${puedeEscribirTramite ? 'Registro y Sincronización Activa' : 'Solo Consulta DNIe 3.0 y Verificación AFIS'}`}
+              </p>
+            </div>
+            <div class="w-11 h-11 rounded-full bg-[#C6FF00] text-[#14071E] flex items-center justify-center font-black text-lg">
+              ✓
+            </div>
+          </div>
+
+          <!-- 4 KPIs -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="p-4 rounded-2xl bg-[#231033] border border-[#3d1e57]">
+              <div class="text-xs font-bold text-[#C6FF00]">Padrón DNI</div>
+              <div class="text-2xl font-extrabold mt-1">${state.ciudadanos.length}</div>
+              <div class="text-xs text-[#C9B6D9]">Ciudadanos en padrón</div>
+            </div>
+            <div class="p-4 rounded-2xl bg-[#231033] border border-[#3d1e57]">
+              <div class="text-xs font-bold text-[#C6FF00]">Trámites DNI</div>
+              <div class="text-2xl font-extrabold mt-1">${totalTramites}</div>
+              <div class="text-xs text-[#C9B6D9]">Solicitudes registradas</div>
+            </div>
+            <div class="p-4 rounded-2xl bg-[#231033] border border-[#3d1e57]">
+              <div class="text-xs font-bold text-[#40C4FF]">Departamentos</div>
+              <div class="text-2xl font-extrabold mt-1">${DEPARTAMENTOS.length - 1}</div>
+              <div class="text-xs text-[#C9B6D9]">Sedes con Ubigeo</div>
+            </div>
+            <div class="p-4 rounded-2xl bg-[#231033] border border-[#3d1e57]">
+              <div class="text-xs font-bold text-[#C6FF00]">Entregados</div>
+              <div class="text-2xl font-extrabold mt-1">${porcentaje}%</div>
+              <div class="text-xs text-[#C9B6D9]">${atendidos} de ${totalTramites} atendidos</div>
+            </div>
+          </div>
+
+          <!-- Barra de Progreso y Distribución -->
+          <div class="p-4 rounded-2xl bg-[#231033] border border-[#3d1e57] space-y-3">
+            <div class="flex justify-between items-center">
+              <span class="text-sm font-bold text-white">📊 Indicadores de Brigada RENIEC</span>
+              <span class="text-xs font-bold text-[#C6FF00]">${atendidos} de ${totalTramites} (${porcentaje}%)</span>
+            </div>
+            <div class="w-full h-2.5 bg-[#311747] rounded-full overflow-hidden">
+              <div class="h-full bg-[#C6FF00]" style="width: ${porcentaje}%"></div>
+            </div>
+            <div class="pt-2 space-y-2">
+              ${TIPOS_TRAMITE.map(tipo => {
+                const cant = state.tramites.filter(t => t.tipoTramite === tipo.id).length;
+                const w = totalTramites ? Math.round((cant / totalTramites) * 100) : 0;
+                return `
+                  <div>
+                    <div class="flex justify-between text-xs mb-1">
+                      <span class="text-[#C9B6D9]">${tipo.etiqueta}</span>
+                      <span class="font-bold text-white">${cant} solic. ${puedeVerRecaudacion ? `(S/ ${tipo.costo})` : ''}</span>
+                    </div>
+                    <div class="w-full h-1.5 bg-[#311747] rounded-full overflow-hidden">
+                      <div class="h-full bg-[#40C4FF]" style="width: ${w}%"></div>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderPadron() {
+      const puedeEscribir = tienePermiso("PADRON_ESCRIBIR");
+      const puedeEliminar = tienePermiso("PADRON_ELIMINAR");
+      const puedeTramite = tienePermiso("TRAMITES_ESCRIBIR");
+
+      const filtrados = state.ciudadanos.filter(c => {
+        const ub = buscarUbigeo(c.ubigeo);
+        const okDep = state.filtroDepartamento === "TODOS" || ub.departamento === state.filtroDepartamento || c.ubigeo.toUpperCase().includes(state.filtroDepartamento);
+        const q = state.filtroTexto.trim().toLowerCase();
+        const okTxt = !q || c.dni.includes(q) || `${c.nombres} ${c.apellidoPaterno} ${c.apellidoMaterno}`.toLowerCase().includes(q) || c.ubigeo.toLowerCase().includes(q);
+        return okDep && okTxt;
+      });
+
+      const seleccionado = filtrados.find(c => c.id === state.ciudadanoSeleccionadoId) || filtrados[0] || state.ciudadanos[0];
+      const ubSel = seleccionado ? buscarUbigeo(seleccionado.ubigeo) : SEDES_UBIGEO[0];
+      const digito = seleccionado ? ((seleccionado.dni.split('').reduce((a, b) => a + parseInt(b || 0), 0) % 9) + 1) : 1;
+
+      return `
+        <div class="space-y-4">
+          <div class="flex items-center justify-between gap-2">
+            <div>
+              <h2 class="text-base sm:text-lg font-extrabold">Padrón Nacional PIDE • API RENIEC</h2>
+              <p class="text-xs text-[#C6FF00]">
+                ${puedeEliminar ? 'Perfil Admin: Control total por Departamento / Provincia / Distrito' : puedeEscribir ? 'Perfil Brigadista: Empadronamiento activo (Borrado protegido)' : 'Módulo Consulta: Búsqueda por DNIe 3.0, Ubigeo y Huella AFIS'}
+              </p>
+            </div>
+            ${puedeEscribir ? `
+              <button onclick="state.mostrarFormCiudadano = !state.mostrarFormCiudadano; state.editandoCiudadanoId = null; render();" class="px-4 py-2 rounded-xl bg-[#C6FF00] text-[#14071E] font-extrabold text-xs">
+                + Empadronar
+              </button>
+            ` : ''}
+          </div>
+
+          <!-- Chips de Filtro por Departamento (Ubigeo) -->
+          <div>
+            <div class="text-xs font-bold text-[#C9B6D9] mb-1.5">📍 Filtrar Padrón por Departamento (Ubigeo INEI/RENIEC):</div>
+            <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+              ${DEPARTAMENTOS.map(dep => `
+                <button
+                  onclick="state.filtroDepartamento = '${dep}'; render();"
+                  class="px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${state.filtroDepartamento === dep ? 'bg-[#C6FF00] text-[#14071E]' : 'bg-[#231033] text-[#C9B6D9] border border-[#3d1e57]'}"
+                >
+                  ${dep === 'TODOS' ? 'TODOS (PERÚ)' : dep}
+                </button>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- Buscador por DNI o Apellidos -->
+          <div class="flex gap-2">
+            <input
+              type="text"
+              value="${state.filtroTexto}"
+              oninput="state.filtroTexto = this.value; render();"
+              placeholder="Buscar por DNI (8 dígitos), Apellidos o Distrito..."
+              class="flex-1 px-4 py-2.5 rounded-xl bg-[#231033] border border-[#3d1e57] text-sm text-white outline-none focus:border-[#C6FF00]"
+            />
+          </div>
+
+          <!-- Formulario Crear/Editar Ciudadano -->
+          ${state.mostrarFormCiudadano && puedeEscribir ? `
+            <form onsubmit="guardarCiudadano(event)" class="p-4 rounded-2xl bg-[#231033] border border-[#C6FF00]/50 space-y-3">
+              <h3 class="text-sm font-extrabold text-[#C6FF00]">${state.editandoCiudadanoId ? 'Editar Ficha Ciudadana RENIEC' : 'Empadronar Nuevo Ciudadano'}</h3>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <input type="text" maxlength="8" placeholder="DNI (8 dígitos)" value="${state.formCiudadano.dni}" oninput="state.formCiudadano.dni = this.value" class="px-3 py-2 rounded-xl bg-[#160821] border border-[#3d1e57] text-xs" required />
+                <input type="text" placeholder="Nombres Completos" value="${state.formCiudadano.nombres}" oninput="state.formCiudadano.nombres = this.value.toUpperCase()" class="px-3 py-2 rounded-xl bg-[#160821] border border-[#3d1e57] text-xs" required />
+                <input type="text" placeholder="Apellido Paterno" value="${state.formCiudadano.apellidoPaterno}" oninput="state.formCiudadano.apellidoPaterno = this.value.toUpperCase()" class="px-3 py-2 rounded-xl bg-[#160821] border border-[#3d1e57] text-xs" required />
+                <input type="text" placeholder="Apellido Materno" value="${state.formCiudadano.apellidoMaterno}" oninput="state.formCiudadano.apellidoMaterno = this.value.toUpperCase()" class="px-3 py-2 rounded-xl bg-[#160821] border border-[#3d1e57] text-xs" required />
+              </div>
+              <div class="text-xs font-bold text-[#C9B6D9]">Seleccionar Ubigeo Rápido (Dpto / Prov / Distrito):</div>
+              <div class="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
+                ${SEDES_UBIGEO.map(sede => `
+                  <button type="button" onclick="state.formCiudadano.ubigeo = '${sede.codigo} - ${sede.departamento} / ${sede.provincia} / ${sede.distrito}'; render();" class="px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap ${state.formCiudadano.ubigeo.includes(sede.codigo) ? 'bg-[#C6FF00] text-[#14071E]' : 'bg-[#311747] text-white'}">
+                    ${sede.departamento} • ${sede.distrito} (${sede.codigo})
+                  </button>
+                `).join('')}
+              </div>
+              <input type="text" placeholder="Ubigeo Oficial" value="${state.formCiudadano.ubigeo}" oninput="state.formCiudadano.ubigeo = this.value" class="w-full px-3 py-2 rounded-xl bg-[#160821] border border-[#3d1e57] text-xs" required />
+              <input type="text" placeholder="Dirección Domiciliaria Actual" value="${state.formCiudadano.direccion}" oninput="state.formCiudadano.direccion = this.value.toUpperCase()" class="w-full px-3 py-2 rounded-xl bg-[#160821] border border-[#3d1e57] text-xs" required />
+              <div class="flex gap-2">
+                <button type="submit" class="flex-1 py-2 rounded-xl bg-[#C6FF00] text-[#14071E] font-extrabold text-xs">Guardar en Padrón</button>
+                <button type="button" onclick="state.mostrarFormCiudadano = false; render();" class="flex-1 py-2 rounded-xl border border-[#C9B6D9]/40 text-xs font-bold">Cancelar</button>
+              </div>
+            </form>
+          ` : ''}
+
+          <!-- Tarjeta Interactiva DNIe 3.0 (Gira Anverso / Reverso MRZ + QR) -->
+          ${seleccionado ? `
+            <div onclick="state.dniReverso = !state.dniReverso; render();" class="p-4 rounded-2xl bg-gradient-to-br from-[#4B125E] to-[#2c0b3a] border border-[#C6FF00]/40 shadow-xl cursor-pointer transition">
+              <div class="flex justify-between items-center border-b border-white/15 pb-2.5 mb-3">
+                <div>
+                  <div class="text-[11px] font-extrabold text-[#C6FF00]">REPÚBLICA DEL PERÚ • RENIEC</div>
+                  <div class="text-[11px] font-bold text-white">
+                    ${!state.dniReverso ? 'DOCUMENTO NACIONAL DE IDENTIDAD ELECTRÓNICO (ANVERSO)' : 'DNIe 3.0 • DATOS DE UBIGEO Y ZONA MRZ (REVERSO)'}
+                  </div>
+                </div>
+                <span class="px-2.5 py-1 rounded-lg bg-[#C6FF00] text-[#14071E] font-extrabold text-xs">
+                  CUI ${seleccionado.dni}-${digito}
+                </span>
+              </div>
+
+              ${!state.dniReverso ? `
+                <div class="flex items-center gap-4">
+                  <div class="flex flex-col items-center gap-1.5">
+                    <div class="w-16 h-16 rounded-xl bg-[#231033] border border-[#C6FF00]/40 flex items-center justify-center text-3xl">👤</div>
+                    <span class="px-2 py-0.5 rounded bg-amber-500/20 text-[#C6FF00] text-[10px] font-extrabold">⚡ CHIP NFC</span>
+                  </div>
+                  <div class="text-xs space-y-1 flex-1">
+                    <div><b>PRIMER APELLIDO:</b> ${seleccionado.apellidoPaterno}</div>
+                    <div><b>SEGUNDO APELLIDO:</b> ${seleccionado.apellidoMaterno}</div>
+                    <div class="text-sm font-extrabold text-[#C6FF00]">PRENOMBRES: ${seleccionado.nombres}</div>
+                    <div><b>NACIMIENTO:</b> ${seleccionado.fechaNacimiento} | <b>EST. CIVIL:</b> ${seleccionado.estadoCivil}</div>
+                    <div><b>UBIGEO (${ubSel.codigo}):</b> ${seleccionado.ubigeo}</div>
+                  </div>
+                </div>
+              ` : `
+                <div class="space-y-2.5">
+                  <div class="flex items-center justify-between gap-3 text-xs">
+                    <div class="p-2.5 rounded-xl bg-[#231033] text-center">
+                      <div class="text-2xl">🧬</div>
+                      <div class="text-[10px] font-bold text-[#C6FF00]">ÍNDICE DER.</div>
+                    </div>
+                    <div class="flex-1 space-y-0.5">
+                      <div><b>DOMICILIO:</b> ${seleccionado.direccion}</div>
+                      <div><b>DPTO / PROV / DIST:</b> ${seleccionado.ubigeo}</div>
+                      <div class="text-[#C6FF00] font-bold">SEDE RENIEC: ${ubSel.agencia}</div>
+                      <div class="text-[#40C4FF] font-bold">DONACIÓN DE ÓRGANOS: ${seleccionado.donacionOrganos ? 'SÍ AUTORIZA' : 'NO ESPECIFICA'}</div>
+                    </div>
+                    <div class="p-2.5 rounded-xl bg-white text-black font-mono text-[10px] font-black leading-tight text-center">
+                      ▣▤▥<br/>▤QR▤<br/>▥▤▣
+                    </div>
+                  </div>
+                  <div class="p-2.5 rounded-xl bg-[#160821] mono text-[11px] text-[#C6FF00] leading-snug">
+                    I&lt;PER${seleccionado.dni}&lt;${digito}&lt;&lt;&lt;${ubSel.codigo}&lt;&lt;&lt;&lt;&lt;&lt;&lt;<br/>
+                    9905144M3011045PER&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;6<br/>
+                    ${seleccionado.apellidoPaterno.padEnd(12, '<').slice(0,12)}&lt;&lt;${seleccionado.nombres.replace(' ', '<').padEnd(14, '<').slice(0,14)}
+                  </div>
+                </div>
+              `}
+
+              <div class="mt-3 pt-2 border-t border-white/10 flex flex-wrap items-center justify-between gap-2">
+                <span class="text-[11px] text-[#C6FF00] font-semibold">🔄 Toca la tarjeta para girar el DNIe 3.0 (Anverso / Reverso MRZ)</span>
+                <div class="flex gap-2" onclick="event.stopPropagation();">
+                  ${puedeTramite ? `<button onclick="iniciarTramiteDesdeCiudadano(${seleccionado.id})" class="px-3 py-1 rounded-lg bg-[#C6FF00] text-[#14071E] font-extrabold text-xs">+ Trámite</button>` : ''}
+                  <button onclick="mostrarAfis(${seleccionado.id})" class="px-3 py-1 rounded-lg bg-[#311747] text-white font-bold text-xs">🧬 AFIS Huella</button>
+                </div>
+              </div>
+            </div>
+          ` : ''}
+
+          <!-- Lista de Ciudadanos Filtrados -->
+          <div class="text-xs font-bold text-[#C9B6D9]">
+            Ciudadanos en ${state.filtroDepartamento === 'TODOS' ? 'Todo el Perú' : state.filtroDepartamento} (${filtrados.length})
+          </div>
+          <div class="space-y-2.5">
+            ${filtrados.map(c => {
+              const ub = buscarUbigeo(c.ubigeo);
+              return `
+                <div onclick="state.ciudadanoSeleccionadoId = ${c.id}; render();" class="p-3.5 rounded-2xl bg-[#231033] hover:bg-[#311747] border ${seleccionado && seleccionado.id === c.id ? 'border-[#C6FF00]' : 'border-[#3d1e57]'} flex items-center justify-between gap-2 cursor-pointer transition">
+                  <div>
+                    <div class="text-sm font-extrabold text-white">DNI: ${c.dni} • ${c.nombres} ${c.apellidoPaterno} ${c.apellidoMaterno}</div>
+                    <div class="text-xs text-[#C6FF00] font-semibold">Ubigeo ${ub.codigo}: ${c.ubigeo}</div>
+                    <div class="text-[11px] text-[#C9B6D9]">Domicilio: ${c.direccion} | Nac: ${c.fechaNacimiento}</div>
+                  </div>
+                  <div class="flex items-center gap-1" onclick="event.stopPropagation();">
+                    <button onclick="mostrarAfis(${c.id})" title="Verificar Huella AFIS" class="p-2 rounded-lg hover:bg-white/10 text-[#C6FF00]">🧬</button>
+                    ${puedeEscribir ? `<button onclick="state.editandoCiudadanoId = ${c.id}; state.formCiudadano = {...state.ciudadanos.find(x=>x.id===${c.id})}; state.mostrarFormCiudadano = true; render();" title="Editar" class="p-2 rounded-lg hover:bg-white/10">✏️</button>` : ''}
+                    ${puedeEliminar ? `<button onclick="eliminarCiudadano(${c.id})" title="Eliminar" class="p-2 rounded-lg hover:bg-white/10 text-[#FF5252]">🗑️</button>` : puedeEscribir ? `<span title="Borrado protegido en Brigada" class="p-2 opacity-50">🔒</span>` : ''}
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderTramites() {
+      const puedeEscribir = tienePermiso("TRAMITES_ESCRIBIR");
+      const puedeAprobar = tienePermiso("TRAMITES_APROBAR");
+      const puedeEliminar = tienePermiso("TRAMITES_ELIMINAR");
+
+      const filtrados = state.tramites.filter(t => {
+        const ub = buscarUbigeo(t.ubigeoDestino);
+        const okDep = state.filtroDepTramite === "TODOS" || ub.departamento === state.filtroDepTramite || t.ubigeoDestino.toUpperCase().includes(state.filtroDepTramite);
+        const okEst = state.filtroEstadoTramite === "TODOS" || t.estado === state.filtroEstadoTramite;
+        const q = state.filtroTextoTramite.trim().toLowerCase();
+        const okTxt = !q || t.dniCiudadano.includes(q) || t.nombreCiudadano.toLowerCase().includes(q) || t.ubigeoDestino.toLowerCase().includes(q);
+        return okDep && okEst && okTxt;
+      });
+
+      return `
+        <div class="space-y-4">
+          <div class="flex items-center justify-between gap-2">
+            <div>
+              <h2 class="text-base sm:text-lg font-extrabold">Gestión de Trámites por Ubigeo RENIEC</h2>
+              <p class="text-xs text-[#C6FF00]">
+                ${puedeEliminar ? 'Rol Admin: Crear, Editar, Aprobar/Atender y Eliminar habilitados' : puedeEscribir ? 'Rol Brigadista: Creación y edición Offline-First habilitadas' : 'Módulo Consulta: Visualización de etapas del trámite por Sede'}
+              </p>
+            </div>
+            ${puedeEscribir ? `
+              <button onclick="state.mostrarFormTramite = !state.mostrarFormTramite; state.editandoTramiteId = null; render();" class="px-4 py-2 rounded-xl bg-[#C6FF00] text-[#14071E] font-extrabold text-xs">
+                + Nuevo Trámite
+              </button>
+            ` : ''}
+          </div>
+
+          <!-- Filtro por Departamento -->
+          <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+            ${DEPARTAMENTOS.map(dep => `
+              <button
+                onclick="state.filtroDepTramite = '${dep}'; render();"
+                class="px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap ${state.filtroDepTramite === dep ? 'bg-[#C6FF00] text-[#14071E]' : 'bg-[#231033] text-[#C9B6D9] border border-[#3d1e57]'}"
+              >
+                ${dep === 'TODOS' ? 'TODAS LAS SEDES' : dep}
+              </button>
+            `).join('')}
+          </div>
+
+          <!-- Filtro por Estado -->
+          <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+            ${["TODOS", ...ESTADOS_TRAMITE].map(est => `
+              <button
+                onclick="state.filtroEstadoTramite = '${est}'; render();"
+                class="px-3 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap ${state.filtroEstadoTramite === est ? 'bg-[#40C4FF] text-[#00263A]' : 'bg-[#311747] text-[#C9B6D9]'}"
+              >
+                ${est}
+              </button>
+            `).join('')}
+          </div>
+
+          ${state.mostrarFormTramite && puedeEscribir ? `
+            <form onsubmit="guardarTramite(event)" class="p-4 rounded-2xl bg-[#231033] border border-[#C6FF00]/50 space-y-3">
+              <h3 class="text-sm font-extrabold text-[#C6FF00]">${state.editandoTramiteId ? 'Actualizar Trámite DNI' : 'Registrar Solicitud de Trámite DNI'}</h3>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <input type="text" maxlength="8" placeholder="DNI del Ciudadano (8 dígitos)" value="${state.formTramite.dniCiudadano}" oninput="state.formTramite.dniCiudadano = this.value" class="px-3 py-2 rounded-xl bg-[#160821] border border-[#3d1e57] text-xs" required />
+                <input type="text" placeholder="Apellidos y Nombres" value="${state.formTramite.nombreCiudadano}" oninput="state.formTramite.nombreCiudadano = this.value.toUpperCase()" class="px-3 py-2 rounded-xl bg-[#160821] border border-[#3d1e57] text-xs" required />
+              </div>
+              <div class="flex gap-1.5 overflow-x-auto no-scrollbar">
+                ${TIPOS_TRAMITE.map(t => `
+                  <button type="button" onclick="state.formTramite.tipoTramite = '${t.id}'; render();" class="px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap ${state.formTramite.tipoTramite === t.id ? 'bg-[#C6FF00] text-[#14071E]' : 'bg-[#311747] text-white'}">
+                    ${t.etiqueta} (S/ ${t.costo})
+                  </button>
+                `).join('')}
+              </div>
+              <div class="flex gap-1.5 overflow-x-auto no-scrollbar">
+                ${SEDES_UBIGEO.map(sede => `
+                  <button type="button" onclick="state.formTramite.ubigeoDestino = '${sede.codigo} - ${sede.departamento} / ${sede.provincia} / ${sede.distrito} (${sede.agencia})'; render();" class="px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap ${state.formTramite.ubigeoDestino.includes(sede.codigo) ? 'bg-[#40C4FF] text-[#00263A]' : 'bg-[#311747] text-white'}">
+                    ${sede.departamento} • ${sede.distrito}
+                  </button>
+                `).join('')}
+              </div>
+              <input type="text" placeholder="Sustento / Observaciones" value="${state.formTramite.observaciones}" oninput="state.formTramite.observaciones = this.value" class="w-full px-3 py-2 rounded-xl bg-[#160821] border border-[#3d1e57] text-xs" required />
+              <div class="flex gap-2">
+                <button type="submit" class="flex-1 py-2 rounded-xl bg-[#C6FF00] text-[#14071E] font-extrabold text-xs">Guardar Trámite</button>
+                <button type="button" onclick="state.mostrarFormTramite = false; render();" class="flex-1 py-2 rounded-xl border border-[#C9B6D9]/40 text-xs font-bold">Cancelar</button>
+              </div>
+            </form>
+          ` : ''}
+
+          <div class="space-y-3">
+            ${filtrados.map(t => {
+              const tipo = TIPOS_TRAMITE.find(x => x.id === t.tipoTramite) || TIPOS_TRAMITE[1];
+              const ub = buscarUbigeo(t.ubigeoDestino);
+              const nivel = t.estado === "ATENDIDO" ? 3 : (t.estado === "EN_PROCESO" || t.estado === "OBSERVADO") ? 2 : 1;
+              return `
+                <div class="p-4 rounded-2xl bg-[#231033] border border-[#3d1e57] space-y-2.5">
+                  <div class="flex justify-between items-center">
+                    <div class="text-sm font-extrabold">DNI ${t.dniCiudadano} • ${t.nombreCiudadano}</div>
+                    <span class="px-2.5 py-0.5 rounded-lg bg-[#2E1647] text-[#C6FF00] text-[11px] font-bold">✓ Sincronizado</span>
+                  </div>
+                  <div class="text-xs text-[#C6FF00] font-semibold">
+                    Tipo: ${tipo.etiqueta} (Tasa S/ ${tipo.costo}.00) | Estado: ${t.estado}
+                  </div>
+                  <!-- Stepper de 3 etapas -->
+                  <div class="grid grid-cols-3 gap-1.5 text-center text-[11px] font-bold">
+                    <div class="py-1 rounded-md ${nivel >= 1 ? 'bg-[#C6FF00] text-[#14071E]' : 'bg-[#311747] text-gray-400'}">1. Recibido</div>
+                    <div class="py-1 rounded-md ${nivel >= 2 ? 'bg-[#C6FF00] text-[#14071E]' : 'bg-[#311747] text-gray-400'}">2. Procesando</div>
+                    <div class="py-1 rounded-md ${nivel >= 3 ? 'bg-[#C6FF00] text-[#14071E]' : 'bg-[#311747] text-gray-400'}">3. Entregado</div>
+                  </div>
+                  <div class="text-xs font-semibold">Ubigeo (${ub.codigo}): ${t.ubigeoDestino} | Fecha: ${t.fechaRegistro}</div>
+                  <div class="text-xs text-[#C9B6D9]">Observación: ${t.observaciones}</div>
+                  <div class="flex justify-end gap-2 pt-1">
+                    ${puedeAprobar && t.estado !== "ATENDIDO" ? `<button onclick="aprobarTramite(${t.id})" class="px-3 py-1 rounded-lg bg-[#40C4FF] text-[#00263A] font-extrabold text-xs">✓ Aprobar Entrega</button>` : ''}
+                    ${puedeEliminar ? `<button onclick="eliminarTramite(${t.id})" class="px-3 py-1 rounded-lg bg-[#5C1127] text-[#FFCDD2] font-bold text-xs">🗑️ Anular</button>` : ''}
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderPerfil() {
+      const s = state.sesion;
+      return `
+        <div class="space-y-4">
+          <div class="p-5 rounded-2xl bg-[#231033] border border-[#3d1e57] space-y-2.5">
+            <h3 class="text-base font-extrabold text-[#C6FF00]">🛡️ Credencial Digital del Registrador (JWT)</h3>
+            <hr class="border-[#3d1e57]" />
+            <p class="text-sm font-bold">Operador: ${s.nombreCompleto}</p>
+            <p class="text-xs text-[#C9B6D9]">Usuario: @${s.usuario}</p>
+            <p class="text-xs text-[#C9B6D9]">Cargo: ${s.cargo}</p>
+            <p class="text-xs text-[#C9B6D9]">Sede asignada: ${s.sede}</p>
+            <div class="p-3 rounded-xl bg-[#4B125E] text-xs font-bold text-[#C6FF00]">
+              Permisos JWT: ${s.permisos.join(", ")}
+            </div>
+          </div>
+
+          <div class="p-5 rounded-2xl bg-[#231033] border border-[#3d1e57] space-y-2">
+            <h3 class="text-base font-extrabold text-[#40C4FF]">☁️ Arquitectura Híbrida Cloudflare Pages + Android KMP</h3>
+            <p class="text-xs text-[#C9B6D9]">• Plataforma Web: Cloudflare Pages Edge CDN</p>
+            <p class="text-xs text-[#C9B6D9]">• App Móvil: Kotlin Multiplatform + Compose Multiplatform + SQLDelight Offline</p>
+            <p class="text-xs text-[#C6FF00] font-bold">• Catálogo Oficial de Ubigeos INEI/RENIEC activo (10 sedes nacionales)</p>
+          </div>
+
+          <button onclick="cerrarSesion()" class="w-full py-3.5 rounded-xl bg-[#FF5252] text-white font-extrabold text-sm shadow-lg">
+            🚪 Cerrar Sesión Segura (Borrar JWT)
+          </button>
+        </div>
+      `;
+    }
+
+    function renderMainScaffold() {
+      const s = state.sesion;
+      const titulos = { inicio: "Inicio", padron: "Padrón DNI", tramites: "Trámites", perfil: "Perfil" };
+      return `
+        <!-- TopAppBar con degradado púrpura y rombo 45° -->
+        <header class="topbar-gradient px-5 py-3.5 flex items-center justify-between shadow-md">
+          <div class="flex items-center gap-3">
+            <div class="w-7 h-7 rotate-45 border-2 border-[#C6FF00] rounded-md flex items-center justify-center">
+              <span class="-rotate-45 text-xs">🪪</span>
+            </div>
+            <span class="font-extrabold text-sm sm:text-base tracking-wide text-white">
+              ${titulos[state.tabActual]} • ${s.usuario.toUpperCase()}
+            </span>
+          </div>
+          <button onclick="cerrarSesion()" class="text-xs font-bold px-3 py-1.5 rounded-lg bg-black/25 text-[#C6FF00] hover:bg-black/40">
+            Salir
+          </button>
+        </header>
+
+        <!-- Contenido Principal -->
+        <main class="flex-1 p-4 sm:p-6 overflow-y-auto">
+          ${state.tabActual === "inicio" ? renderInicio() : ""}
+          ${state.tabActual === "padron" ? renderPadron() : ""}
+          ${state.tabActual === "tramites" ? renderTramites() : ""}
+          ${state.tabActual === "perfil" ? renderPerfil() : ""}
+        </main>
+
+        <!-- NavigationBar Inferior estilo Cyber-Purple & Lima Neón -->
+        <nav class="bg-[#231033] border-t border-[#3d1e57] px-3 py-2 grid grid-cols-4 gap-2">
+          ${[
+            { id: "inicio", label: "Inicio", icon: "🏠" },
+            { id: "padron", label: "Padrón DNI", icon: "🪪" },
+            { id: "tramites", label: "Trámites", icon: "📋" },
+            { id: "perfil", label: "Perfil", icon: "👤" }
+          ].map(item => `
+            <button
+              onclick="state.tabActual = '${item.id}'; render();"
+              class="flex flex-col items-center justify-center py-1.5 rounded-xl transition ${state.tabActual === item.id ? 'bg-[#C6FF00] text-[#14071E] font-extrabold' : 'text-[#C9B6D9] hover:text-white font-semibold'}"
+            >
+              <span class="text-base">${item.icon}</span>
+              <span class="text-[11px] mt-0.5">${item.label}</span>
+            </button>
+          `).join('')}
+        </nav>
+      `;
+    }
+
+    function render() {
+      const root = document.getElementById("app-root");
+      root.innerHTML = state.sesion ? renderMainScaffold() : renderLogin();
+    }
+
+    render();
+  </script>
+</body>
+</html>
