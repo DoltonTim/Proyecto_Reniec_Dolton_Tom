@@ -1,5 +1,7 @@
 package pe.edu.upeu.reniecmovil
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,7 +12,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
@@ -30,10 +33,10 @@ import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -49,6 +52,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -65,6 +71,12 @@ import pe.edu.upeu.reniecmovil.presentation.sesion.SesionViewModel
 import pe.edu.upeu.reniecmovil.presentation.tramite.TramiteScreen
 import pe.edu.upeu.reniecmovil.presentation.tramite.TramiteViewModel
 import pe.edu.upeu.reniecmovil.theme.ReniecMovilTheme
+import pe.edu.upeu.reniecmovil.theme.StoriDarkCard
+import pe.edu.upeu.reniecmovil.theme.StoriLavenderMuted
+import pe.edu.upeu.reniecmovil.theme.StoriNeonLime
+import pe.edu.upeu.reniecmovil.theme.StoriNeonTextOnLime
+import pe.edu.upeu.reniecmovil.theme.StoriPurpleMid
+import pe.edu.upeu.reniecmovil.theme.StoriPurpleTop
 
 private data class DestinoNav(
     val screen: Screen,
@@ -76,7 +88,7 @@ private data class DestinoNav(
 fun App() {
     val sesionViewModel: SesionViewModel = koinViewModel()
     val sesionState by sesionViewModel.estado.collectAsState()
-    var darkTheme by rememberSaveable { mutableStateOf(false) }
+    var darkTheme by rememberSaveable { mutableStateOf(true) }
 
     ReniecMovilTheme(darkTheme = darkTheme) {
         val sesion = sesionState.sesion
@@ -123,65 +135,94 @@ private fun ReniecMainScaffold(
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
-            ModalDrawerSheet {
-                Row(
+            ModalDrawerSheet(
+                drawerContainerColor = MaterialTheme.colorScheme.surface,
+                drawerContentColor = MaterialTheme.colorScheme.onSurface
+            ) {
+                // Cabecera del Drawer con degradado púrpura/guinda y rombo tipo The Stori
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(24.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(StoriPurpleTop, StoriPurpleMid)
+                            )
+                        )
+                        .padding(24.dp)
                 ) {
-                    Surface(
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Badge,
-                            contentDescription = null,
+                        Box(
                             modifier = Modifier
-                                .padding(12.dp)
-                                .size(28.dp)
-                        )
-                    }
-                    Column {
-                        Text(
-                            text = "RENIEC MÓVIL",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = sesion.nombreCompleto,
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Text(
-                            text = "@${sesion.usuario} • ${sesion.cargo}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                                .size(42.dp)
+                                .rotate(45f)
+                                .border(2.dp, Color.White, RoundedCornerShape(8.dp))
+                                .padding(5.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .border(1.5.dp, StoriNeonLime, RoundedCornerShape(4.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Badge,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier
+                                        .size(16.dp)
+                                        .rotate(-45f)
+                                )
+                            }
+                        }
+
+                        Column {
+                            Text(
+                                text = "Reniec Móvil",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color.White
+                            )
+                            Text(
+                                text = sesion.nombreCompleto,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Bold,
+                                color = StoriNeonLime
+                            )
+                            Text(
+                                text = "@${sesion.usuario} • ${sesion.cargo}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White.copy(alpha = 0.85f)
+                            )
+                        }
                     }
                 }
 
-                HorizontalDivider()
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 destinos.forEach { destino ->
                     NavigationDrawerItem(
-                        label = { Text(destino.titulo) },
+                        label = { Text(destino.titulo, fontWeight = FontWeight.Bold) },
                         selected = pantallaActual == destino.screen,
                         onClick = {
                             pantallaActual = destino.screen
                             scope.launch { drawerState.close() }
                         },
                         icon = { Icon(destino.icono, contentDescription = destino.titulo) },
+                        colors = NavigationDrawerItemDefaults.colors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            selectedTextColor = StoriNeonLime,
+                            selectedIconColor = StoriNeonLime
+                        ),
                         modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                     )
                 }
 
                 NavigationDrawerItem(
-                    label = { Text("Cerrar sesión (${sesion.usuario})") },
+                    label = { Text("Cerrar sesión (${sesion.usuario})", fontWeight = FontWeight.SemiBold) },
                     selected = false,
                     onClick = {
                         scope.launch { drawerState.close() }
@@ -192,7 +233,7 @@ private fun ReniecMainScaffold(
                 )
 
                 Spacer(modifier = Modifier.weight(1f))
-                HorizontalDivider()
+                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
 
                 Row(
                     modifier = Modifier
@@ -201,7 +242,11 @@ private fun ReniecMainScaffold(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("Modo Oscuro Material 3", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        text = if (darkTheme) "Skin Cyber-Purple (Oscuro)" else "Skin Institucional (Claro)",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold
+                    )
                     Switch(checked = darkTheme, onCheckedChange = onCambiarTema)
                 }
             }
@@ -209,40 +254,83 @@ private fun ReniecMainScaffold(
     ) {
         Scaffold(
             topBar = {
-                TopAppBar(
-                    title = {
-                        val titulo = destinos.firstOrNull { it.screen == pantallaActual }?.titulo ?: "RENIEC Móvil"
-                        Text("RENIEC • $titulo (${sesion.usuario.uppercase()})")
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            Icon(Icons.Default.Menu, contentDescription = "Abrir menú lateral")
-                        }
-                    },
-                    actions = {
-                        IconButton(onClick = { onCambiarTema(!darkTheme) }) {
-                            Icon(
-                                imageVector = if (darkTheme) Icons.Default.LightMode else Icons.Default.DarkMode,
-                                contentDescription = "Cambiar Tema"
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(StoriPurpleTop, StoriPurpleMid)
                             )
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                        navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                        actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                        )
+                ) {
+                    TopAppBar(
+                        title = {
+                            val titulo = destinos.firstOrNull { it.screen == pantallaActual }?.titulo ?: "RENIEC Móvil"
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .rotate(45f)
+                                        .border(1.5.dp, StoriNeonLime, RoundedCornerShape(4.dp)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Badge,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier
+                                            .size(13.dp)
+                                            .rotate(-45f)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = "$titulo • ${sesion.usuario.uppercase()}",
+                                    fontWeight = FontWeight.ExtraBold
+                                )
+                            }
+                        },
+                        navigationIcon = {
+                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                                Icon(Icons.Default.Menu, contentDescription = "Abrir menú lateral")
+                            }
+                        },
+                        actions = {
+                            IconButton(onClick = { onCambiarTema(!darkTheme) }) {
+                                Icon(
+                                    imageVector = if (darkTheme) Icons.Default.LightMode else Icons.Default.DarkMode,
+                                    contentDescription = "Cambiar Tema",
+                                    tint = StoriNeonLime
+                                )
+                            }
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = Color.Transparent,
+                            titleContentColor = Color.White,
+                            navigationIconContentColor = Color.White,
+                            actionIconContentColor = StoriNeonLime
+                        )
                     )
-                )
+                }
             },
             bottomBar = {
-                NavigationBar {
+                NavigationBar(
+                    containerColor = if (darkTheme) StoriDarkCard else MaterialTheme.colorScheme.surface,
+                    tonalElevation = 8.dp
+                ) {
                     destinos.forEach { destino ->
                         NavigationBarItem(
                             selected = pantallaActual == destino.screen,
                             onClick = { pantallaActual = destino.screen },
                             icon = { Icon(destino.icono, contentDescription = destino.titulo) },
-                            label = { Text(destino.titulo) }
+                            label = { Text(destino.titulo, fontWeight = FontWeight.Bold) },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = if (darkTheme) StoriNeonTextOnLime else Color.White,
+                                selectedTextColor = if (darkTheme) StoriNeonLime else StoriPurpleMid,
+                                indicatorColor = if (darkTheme) StoriNeonLime else StoriPurpleMid,
+                                unselectedIconColor = if (darkTheme) StoriLavenderMuted else MaterialTheme.colorScheme.onSurfaceVariant,
+                                unselectedTextColor = if (darkTheme) StoriLavenderMuted else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         )
                     }
                 }
@@ -251,6 +339,7 @@ private fun ReniecMainScaffold(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
                     .padding(paddingValues)
             ) {
                 when (pantallaActual) {
