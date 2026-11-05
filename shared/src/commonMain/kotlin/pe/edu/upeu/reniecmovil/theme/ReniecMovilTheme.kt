@@ -1,6 +1,5 @@
 package pe.edu.upeu.reniecmovil.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
@@ -12,46 +11,66 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-val ReniecCrimson = Color(0xFF8B1538)
-val ReniecCrimsonDark = Color(0xFF5D0B24)
-val ReniecNavy = Color(0xFF1A365D)
-val ReniecGold = Color(0xFFD97706)
-val ReniecGreen = Color(0xFF15803D)
+// Paleta "The Stori / RENIEC Cyber-Purple & Neon Lime"
+val ReniecCrimson = Color(0xFF7B0D54)
+val ReniecCrimsonDark = Color(0xFF4A0635)
+val ReniecNavy = Color(0xFF40C4FF)
+val ReniecGold = Color(0xFFC6FF00)
+val ReniecGreen = Color(0xFF00E676)
 
-private val LightColorScheme = lightColorScheme(
-    primary = ReniecCrimson,
-    onPrimary = Color.White,
-    primaryContainer = Color(0xFFFFD9E0),
-    onPrimaryContainer = Color(0xFF2B000D),
-    secondary = ReniecNavy,
-    onSecondary = Color.White,
-    secondaryContainer = Color(0xFFD6E3FF),
-    onSecondaryContainer = Color(0xFF001838),
-    tertiary = ReniecGold,
-    background = Color(0xFFF8F9FA),
-    onBackground = Color(0xFF111827),
-    surface = Color.White,
-    onSurface = Color(0xFF111827),
-    surfaceVariant = Color(0xFFEEF0F4),
-    onSurfaceVariant = Color(0xFF1F2937)
-)
+val StoriPurpleTop = Color(0xFF8C0B42)
+val StoriPurpleMid = Color(0xFF640D5F)
+val StoriDarkBg = Color(0xFF160821)
+val StoriDarkCard = Color(0xFF231033)
+val StoriDarkCardVariant = Color(0xFF311747)
+val StoriNeonLime = Color(0xFFC6FF00)
+val StoriNeonTextOnLime = Color(0xFF14071E)
+val StoriLavenderMuted = Color(0xFFC9B6D9)
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Color(0xFFFFB1C3),
-    onPrimary = Color(0xFF54001F),
-    primaryContainer = Color(0xFF70082B),
-    onPrimaryContainer = Color(0xFFFFD9E0),
-    secondary = Color(0xFFA9C7FF),
-    onSecondary = Color(0xFF003063),
-    secondaryContainer = Color(0xFF1E4373),
-    onSecondaryContainer = Color(0xFFD6E3FF),
-    tertiary = Color(0xFFFBBF24),
-    background = Color(0xFF121214),
-    onBackground = Color(0xFFF9FAFB),
-    surface = Color(0xFF1C1C1F),
-    onSurface = Color(0xFFF9FAFB),
-    surfaceVariant = Color(0xFF2C2C30),
-    onSurfaceVariant = Color(0xFFE5E7EB)
+    primary = StoriNeonLime,
+    onPrimary = StoriNeonTextOnLime,
+    primaryContainer = Color(0xFF4B125E),
+    onPrimaryContainer = Color.White,
+    secondary = Color(0xFF40C4FF),
+    onSecondary = Color(0xFF00263A),
+    secondaryContainer = Color(0xFF2E1647),
+    onSecondaryContainer = Color(0xFFEEDCFF),
+    tertiary = Color(0xFFFFB300),
+    onTertiary = Color(0xFF261600),
+    tertiaryContainer = Color(0xFF4A2545),
+    onTertiaryContainer = Color(0xFFFFD8EC),
+    background = StoriDarkBg,
+    onBackground = Color.White,
+    surface = StoriDarkCard,
+    onSurface = Color.White,
+    surfaceVariant = StoriDarkCardVariant,
+    onSurfaceVariant = StoriLavenderMuted,
+    error = Color(0xFFFF5252),
+    onError = Color(0xFF2D0004),
+    errorContainer = Color(0xFF5C1127),
+    onErrorContainer = Color(0xFFFFCDD2)
+)
+
+private val LightColorScheme = lightColorScheme(
+    primary = Color(0xFF640D5F),
+    onPrimary = Color.White,
+    primaryContainer = Color(0xFFF3D9FA),
+    onPrimaryContainer = Color(0xFF28002E),
+    secondary = Color(0xFF8C0B42),
+    onSecondary = Color.White,
+    secondaryContainer = Color(0xFFFFD9E3),
+    onSecondaryContainer = Color(0xFF3A0019),
+    tertiary = Color(0xFF557000),
+    onTertiary = Color.White,
+    tertiaryContainer = Color(0xFFD8FF66),
+    onTertiaryContainer = Color(0xFF172100),
+    background = Color(0xFFF6F2F9),
+    onBackground = Color(0xFF1A0926),
+    surface = Color.White,
+    onSurface = Color(0xFF1A0926),
+    surfaceVariant = Color(0xFFEDE4F4),
+    onSurfaceVariant = Color(0xFF3E2753)
 )
 
 private val ReniecSharpTypography = Typography(
@@ -121,7 +140,7 @@ private val ReniecSharpTypography = Typography(
 
 @Composable
 fun ReniecMovilTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean = true,
     content: @Composable () -> Unit
 ) {
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
