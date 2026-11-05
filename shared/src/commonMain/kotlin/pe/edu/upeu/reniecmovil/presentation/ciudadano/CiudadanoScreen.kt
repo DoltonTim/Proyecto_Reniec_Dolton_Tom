@@ -1,6 +1,7 @@
 package pe.edu.upeu.reniecmovil.presentation.ciudadano
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,26 +12,31 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Fingerprint
+import androidx.compose.material.icons.filled.FlipCameraAndroid
+import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PostAdd
+import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.VerifiedUser
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -39,11 +45,17 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import pe.edu.upeu.reniecmovil.domain.model.Ciudadano
@@ -55,6 +67,40 @@ fun CiudadanoScreen(
     onIniciarTramiteParaCiudadano: (Ciudadano) -> Unit
 ) {
     val state by viewModel.uiState.collectAsState()
+    var ciudadanoParaAfis by remember { mutableStateOf<Ciudadano?>(null) }
+    var ciudadanoParaEliminar by remember { mutableStateOf<Ciudadano?>(null) }
+
+    ciudadanoParaAfis?.let { c ->
+        DialogoVerificacionBiometricaAfis(
+            ciudadano = c,
+            onCerrar = { ciudadanoParaAfis = null }
+        )
+    }
+
+    ciudadanoParaEliminar?.let { c ->
+        AlertDialog(
+            onDismissRequest = { ciudadanoParaEliminar = null },
+            title = { Text("Confirmar Eliminación en Padrón") },
+            text = {
+                Text("¿Está seguro de eliminar el registro del ciudadano ${c.nombreCompleto} con DNI ${c.dni}?")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.eliminar(c.id)
+                        ciudadanoParaEliminar = null
+                    }
+                ) {
+                    Text("Eliminar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { ciudadanoParaEliminar = null }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -75,7 +121,7 @@ fun CiudadanoScreen(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "Consulta por DNI (8 dígitos), registro y actualización",
+                        text = "DNIe 3.0 Interactivo (Anverso/Reverso) y Validación Biométrica AFIS",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -97,7 +143,7 @@ fun CiudadanoScreen(
                 OutlinedTextField(
                     value = state.filtroDniONombre,
                     onValueChange = viewModel::onFiltroChange,
-                    label = { Text("Buscar por DNI, Apellidos o Ubigeo") },
+                    label = { Text("Buscar por DNI (8 dígitos), Apellidos o Ubigeo") },
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                     singleLine = true,
                     modifier = Modifier.weight(1f)
@@ -160,9 +206,10 @@ fun CiudadanoScreen(
 
         state.ciudadanoSeleccionado?.let { seleccionado ->
             item {
-                TarjetaDniPeruano(
+                TarjetaDniElectronicoInteractivo(
                     ciudadano = seleccionado,
                     onIniciarTramite = { onIniciarTramiteParaCiudadano(seleccionado) },
+                    onVerificarHuella = { ciudadanoParaAfis = seleccionado },
                     onEditar = { viewModel.iniciarEdicion(seleccionado) }
                 )
             }
@@ -202,10 +249,17 @@ fun CiudadanoScreen(
                         )
                     }
                     Row {
+                        IconButton(onClick = { ciudadanoParaAfis = ciudadano }) {
+                            Icon(
+                                Icons.Default.Fingerprint,
+                                contentDescription = "Verificar Huella AFIS",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
                         IconButton(onClick = { viewModel.iniciarEdicion(ciudadano) }) {
                             Icon(Icons.Default.Edit, contentDescription = "Editar")
                         }
-                        IconButton(onClick = { viewModel.eliminar(ciudadano.id) }) {
+                        IconButton(onClick = { ciudadanoParaEliminar = ciudadano }) {
                             Icon(
                                 Icons.Default.Delete,
                                 contentDescription = "Eliminar",
@@ -220,16 +274,24 @@ fun CiudadanoScreen(
 }
 
 @Composable
-private fun TarjetaDniPeruano(
+private fun TarjetaDniElectronicoInteractivo(
     ciudadano: Ciudadano,
     onIniciarTramite: () -> Unit,
+    onVerificarHuella: () -> Unit,
     onEditar: () -> Unit
 ) {
+    var mostrarReverso by remember(ciudadano.id) { mutableStateOf(false) }
+    val digitoVerificador = remember(ciudadano.dni) {
+        (ciudadano.dni.sumOf { it.digitToIntOrNull() ?: 0 } % 9) + 1
+    }
+
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { mostrarReverso = !mostrarReverso },
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -245,8 +307,12 @@ private fun TarjetaDniPeruano(
                         color = MaterialTheme.colorScheme.primary
                     )
                     Text(
-                        text = "DOCUMENTO NACIONAL DE IDENTIDAD",
-                        style = MaterialTheme.typography.labelMedium,
+                        text = if (!mostrarReverso) {
+                            "DOCUMENTO NACIONAL DE IDENTIDAD ELECTRÓNICO (ANVERSO)"
+                        } else {
+                            "DNIe 3.0 • DATOS BIOMÉTRICOS Y ZONA MRZ (REVERSO)"
+                        },
+                        style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -255,9 +321,9 @@ private fun TarjetaDniPeruano(
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
-                        text = "CUI / DNI: ${ciudadano.dni}",
+                        text = "DNI ${ciudadano.dni}-$digitoVerificador",
                         color = MaterialTheme.colorScheme.onPrimary,
-                        style = MaterialTheme.typography.labelLarge,
+                        style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.ExtraBold,
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                     )
@@ -266,86 +332,306 @@ private fun TarjetaDniPeruano(
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.surface,
-                    modifier = Modifier.size(74.dp)
+            if (!mostrarReverso) {
+                // ANVERSO DEL DNIe
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(44.dp)
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.surface,
+                            modifier = Modifier.size(76.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(46.dp)
+                                )
+                            }
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = Color(0xFFD97706).copy(alpha = 0.25f)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Memory,
+                                    contentDescription = "Chip Criptográfico",
+                                    tint = Color(0xFFB45309),
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Text(
+                                    text = "CHIP NFC",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(3.dp)
+                    ) {
+                        Text(
+                            text = "PRIMER APELLIDO: ${ciudadano.apellidoPaterno}",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "SEGUNDO APELLIDO: ${ciudadano.apellidoMaterno}",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "PRENOMBRES: ${ciudadano.nombres}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "NACIMIENTO: ${ciudadano.fechaNacimiento} | EST. CIVIL: ${ciudadano.estadoCivil}",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        Text(
+                            text = "UBIGEO: ${ciudadano.ubigeo}",
+                            style = MaterialTheme.typography.bodySmall
                         )
                     }
                 }
-
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
+            } else {
+                // REVERSO DEL DNIe CON QR, HUELLA Y MRZ
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "APELLIDOS: ${ciudadano.apellidoPaterno} ${ciudadano.apellidoMaterno}",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Bold
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = MaterialTheme.colorScheme.surface,
+                        modifier = Modifier.size(66.dp)
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                Icons.Default.Fingerprint,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(36.dp)
+                            )
+                            Text("ÍNDICE DER.", style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Text(
+                            text = "DIRECCIÓN: ${ciudadano.direccion}",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "DISTRITO / PROV.: ${ciudadano.ubigeo}",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        Text(
+                            text = "DONACIÓN DE ÓRGANOS: ${if (ciudadano.donacionOrganos) "SÍ AUTORIZA" else "NO ESPECIFICA"}",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.secondary
+                        )
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = MaterialTheme.colorScheme.surface,
+                        modifier = Modifier.size(66.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                Icons.Default.QrCode2,
+                                contentDescription = null,
+                                modifier = Modifier.size(48.dp)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Surface(
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    val apPat = ciudadano.apellidoPaterno.replace(" ", "<").padEnd(12, '<').take(12)
+                    val nom = ciudadano.nombres.replace(" ", "<").padEnd(14, '<').take(14)
+                    Column(modifier = Modifier.padding(8.dp)) {
+                        Text(
+                            text = "I<PER${ciudadano.dni}<$digitoVerificador<<<<<<<<<<<<<<<",
+                            fontFamily = FontFamily.Monospace,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "9905144M3011045PER<<<<<<<<<<<6",
+                            fontFamily = FontFamily.Monospace,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "$apPat<<$nom",
+                            fontFamily = FontFamily.Monospace,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        Icons.Default.FlipCameraAndroid,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.primary
                     )
                     Text(
-                        text = "NOMBRES: ${ciudadano.nombres}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.ExtraBold
-                    )
-                    Text(
-                        text = "FECHA NAC.: ${ciudadano.fechaNacimiento} | EST. CIVIL: ${ciudadano.estadoCivil}",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    Text(
-                        text = "UBIGEO: ${ciudadano.ubigeo}",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    Text(
-                        text = "DOMICILIO: ${ciudadano.direccion}",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    Text(
-                        text = "DONACIÓN DE ÓRGANOS: ${if (ciudadano.donacionOrganos) "SÍ AUTORIZA" else "NO ESPECIFICA"}",
+                        text = if (!mostrarReverso) "Toca la tarjeta para ver el reverso (MRZ/QR)" else "Toca para volver al frente",
                         style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.secondary
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Button(
                     onClick = onIniciarTramite,
                     modifier = Modifier.weight(1f)
                 ) {
-                    Icon(Icons.Default.PostAdd, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.size(6.dp))
-                    Text("Iniciar Trámite DNI")
+                    Icon(Icons.Default.PostAdd, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Trámite", style = MaterialTheme.typography.labelMedium)
+                }
+                FilledTonalButton(
+                    onClick = onVerificarHuella,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.Default.Fingerprint, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("AFIS Huella", style = MaterialTheme.typography.labelMedium)
                 }
                 OutlinedButton(
                     onClick = onEditar,
                     modifier = Modifier.weight(1f)
                 ) {
-                    Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.size(6.dp))
-                    Text("Actualizar Datos")
+                    Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Editar", style = MaterialTheme.typography.labelMedium)
                 }
             }
         }
     }
+}
+
+@Composable
+private fun DialogoVerificacionBiometricaAfis(
+    ciudadano: Ciudadano,
+    onCerrar: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onCerrar,
+        icon = {
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primaryContainer,
+                modifier = Modifier.size(64.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.Default.Fingerprint,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(40.dp)
+                    )
+                }
+            }
+        },
+        title = {
+            Text(
+                text = "Verificación Biométrica AFIS - RENIEC",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Surface(
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.VerifiedUser,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "IDENTIDAD VERIFICADA (99.8% Match)",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                    }
+                }
+                Text("Ciudadano: ${ciudadano.nombreCompleto}", fontWeight = FontWeight.Bold)
+                Text("DNI / CUI: ${ciudadano.dni}", style = MaterialTheme.typography.bodySmall)
+                Text("Dedo capturado: Índice Derecho (Minucias: 42/42)", style = MaterialTheme.typography.bodySmall)
+                Text("Estado Padrón: HÁBIL SIN RESTRICCIONES", style = MaterialTheme.typography.bodySmall)
+            }
+        },
+        confirmButton = {
+            Button(onClick = onCerrar) {
+                Text("Aceptar Conformidad")
+            }
+        }
+    )
 }
 
 @Composable

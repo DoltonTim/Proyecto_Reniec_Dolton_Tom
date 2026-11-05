@@ -1,17 +1,21 @@
 package pe.edu.upeu.reniecmovil.presentation.tramite
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -22,6 +26,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FilledTonalButton
@@ -33,11 +38,16 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import pe.edu.upeu.reniecmovil.domain.model.EstadoTramiteDni
@@ -49,6 +59,34 @@ fun TramiteScreen(
     viewModel: TramiteViewModel
 ) {
     val state by viewModel.uiState.collectAsState()
+    var tramiteParaEliminar by remember { mutableStateOf<TramiteDni?>(null) }
+
+    tramiteParaEliminar?.let { tramite ->
+        AlertDialog(
+            onDismissRequest = { tramiteParaEliminar = null },
+            title = { Text("Confirmar Anulación de Trámite DNI") },
+            text = {
+                Text(
+                    "¿Desea anular el trámite de ${tramite.nombreCiudadano} (DNI ${tramite.dniCiudadano})? Esta acción se sincronizará con la Central RENIEC."
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.eliminar(tramite.id)
+                        tramiteParaEliminar = null
+                    }
+                ) {
+                    Text("Anular Trámite")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { tramiteParaEliminar = null }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -69,7 +107,7 @@ fun TramiteScreen(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "CRUD REST + Sincronización Offline-First SQLDelight",
+                        text = "Seguimiento por Etapas + Sincronización Offline-First",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -173,7 +211,7 @@ fun TramiteScreen(
                 tramite = tramite,
                 onEditar = { viewModel.iniciarEdicion(tramite) },
                 onMarcarAtendido = { viewModel.cambiarEstadoRapido(tramite, EstadoTramiteDni.ATENDIDO) },
-                onEliminar = { viewModel.eliminar(tramite.id) }
+                onEliminar = { tramiteParaEliminar = tramite }
             )
         }
     }
@@ -196,7 +234,7 @@ private fun TarjetaTramiteItem(
     ) {
         Column(
             modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -242,6 +280,9 @@ private fun TarjetaTramiteItem(
                 fontWeight = FontWeight.SemiBold
             )
 
+            // Stepper visual de progreso del trámite DNI
+            StepperEstadoTramite(estado = estado)
+
             Text(
                 text = "Ubigeo / Agencia: ${tramite.ubigeoDestino} | Fecha: ${tramite.fechaRegistro}",
                 style = MaterialTheme.typography.bodySmall
@@ -274,6 +315,46 @@ private fun TarjetaTramiteItem(
                         Icons.Default.Delete,
                         contentDescription = "Anular Trámite",
                         tint = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StepperEstadoTramite(estado: EstadoTramiteDni) {
+    val nivelActual = when (estado) {
+        EstadoTramiteDni.PENDIENTE -> 1
+        EstadoTramiteDni.OBSERVADO -> 2
+        EstadoTramiteDni.EN_PROCESO -> 2
+        EstadoTramiteDni.ATENDIDO -> 3
+    }
+    val pasos = listOf("1. Recibido", "2. Procesando", "3. Entregado")
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        pasos.forEachIndexed { idx, etiqueta ->
+            val activo = (idx + 1) <= nivelActual
+            Surface(
+                color = if (activo) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                contentColor = if (activo) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                shape = RoundedCornerShape(6.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.padding(vertical = 4.dp)
+                ) {
+                    Text(
+                        text = etiqueta,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = if (activo) FontWeight.Bold else FontWeight.Normal
                     )
                 }
             }
