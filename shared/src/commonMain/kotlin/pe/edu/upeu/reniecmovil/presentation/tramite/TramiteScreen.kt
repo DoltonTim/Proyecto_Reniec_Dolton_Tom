@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
@@ -46,6 +47,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import pe.edu.upeu.reniecmovil.domain.model.CatalogoUbigeoReniec
 import pe.edu.upeu.reniecmovil.domain.model.EstadoTramiteDni
 import pe.edu.upeu.reniecmovil.domain.model.Sesion
 import pe.edu.upeu.reniecmovil.domain.model.TipoTramiteDni
@@ -58,10 +60,22 @@ fun TramiteScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     var tramiteParaEliminar by remember { mutableStateOf<TramiteDni?>(null) }
+    var filtroDepartamento by remember { mutableStateOf("TODOS") }
 
     val puedeEscribirTramite = sesion.puede("TRAMITES_ESCRIBIR")
     val puedeAprobarTramite = sesion.puede("TRAMITES_APROBAR") || sesion.puede("ROLE_ADMIN")
     val puedeEliminarTramite = sesion.puede("TRAMITES_ELIMINAR") || sesion.puede("ROLE_ADMIN")
+
+    val tramitesFiltradosPorUbigeo = remember(state.tramitesFiltrados, filtroDepartamento) {
+        if (filtroDepartamento == "TODOS") {
+            state.tramitesFiltrados
+        } else {
+            state.tramitesFiltrados.filter { t ->
+                CatalogoUbigeoReniec.detectarDepartamento(t.ubigeoDestino).equals(filtroDepartamento, ignoreCase = true) ||
+                    t.ubigeoDestino.contains(filtroDepartamento, ignoreCase = true)
+            }
+        }
+    }
 
     tramiteParaEliminar?.let { tramite ->
         AlertDialog(
@@ -104,7 +118,7 @@ fun TramiteScreen(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Gestión de Trámites de DNI",
+                        text = "Gestión de Trámites por Ubigeo RENIEC",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -112,7 +126,7 @@ fun TramiteScreen(
                         text = when {
                             puedeEliminarTramite -> "Rol Admin: Crear, Editar, Aprobar/Atender y Eliminar habilitados"
                             puedeEscribirTramite -> "Rol Brigadista: Creación y edición Offline-First habilitadas"
-                            else -> "Módulo Consulta: Visualización de etapas del trámite"
+                            else -> "Módulo Consulta: Visualización de etapas del trámite por Sede"
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary
@@ -138,11 +152,52 @@ fun TramiteScreen(
             }
         }
 
+        // Filtro por Departamento de Atención
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.LocationOn,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = "Filtrar por Departamento / Sede Regional:",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    CatalogoUbigeoReniec.departamentos.forEach { dep ->
+                        FilterChip(
+                            selected = filtroDepartamento == dep,
+                            onClick = { filtroDepartamento = dep },
+                            label = {
+                                Text(
+                                    text = if (dep == "TODOS") "TODAS LAS SEDES" else dep,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        )
+                    }
+                }
+            }
+        }
+
         item {
             OutlinedTextField(
                 value = state.filtroBusqueda,
                 onValueChange = viewModel::onFiltroBusquedaChange,
-                label = { Text("Filtrar por DNI, Ciudadano, Tipo o Ubigeo") },
+                label = { Text("Filtrar por DNI, Ciudadano, Tipo o Distrito") },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
@@ -214,7 +269,7 @@ fun TramiteScreen(
             }
         }
 
-        items(state.tramitesFiltrados, key = { it.id }) { tramite ->
+        items(tramitesFiltradosPorUbigeo, key = { it.id }) { tramite ->
             TarjetaTramiteItem(
                 tramite = tramite,
                 puedeEditar = puedeEscribirTramite,
@@ -241,6 +296,9 @@ private fun TarjetaTramiteItem(
     val tipo = TipoTramiteDni.desdeTexto(tramite.tipoTramite)
     val estado = EstadoTramiteDni.desdeTexto(tramite.estado)
     val esOffline = tramite.pendienteSync || tramite.id < 0
+    val infoUbigeo = remember(tramite.ubigeoDestino) {
+        CatalogoUbigeoReniec.buscarUbigeo(tramite.ubigeoDestino)
+    }
 
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
@@ -297,8 +355,9 @@ private fun TarjetaTramiteItem(
             StepperEstadoTramite(estado = estado)
 
             Text(
-                text = "Ubigeo / Agencia: ${tramite.ubigeoDestino} | Fecha: ${tramite.fechaRegistro}",
-                style = MaterialTheme.typography.bodySmall
+                text = "Ubigeo (${infoUbigeo?.codigo ?: "150101"}): ${tramite.ubigeoDestino} | Fecha: ${tramite.fechaRegistro}",
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.SemiBold
             )
 
             Text(
@@ -453,6 +512,33 @@ private fun FormularioTramiteCard(
                         selected = form.estado == est.name,
                         onClick = { onCambio { it.copy(estado = est.name) } },
                         label = { Text(est.etiqueta) }
+                    )
+                }
+            }
+
+            Text(
+                text = "Seleccionar Sede / Ubigeo (Dpto / Prov / Distrito):",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                CatalogoUbigeoReniec.sedes.forEach { sede ->
+                    FilterChip(
+                        selected = form.ubigeoDestino.contains(sede.distrito, ignoreCase = true) || form.ubigeoDestino.contains(sede.codigo),
+                        onClick = {
+                            onCambio {
+                                it.copy(
+                                    ubigeoDestino = "${sede.etiquetaCompleta} (${sede.agenciaReniec})",
+                                    ubigeoError = null
+                                )
+                            }
+                        },
+                        label = { Text(sede.etiquetaCorta, style = MaterialTheme.typography.labelSmall) }
                     )
                 }
             }

@@ -1,6 +1,7 @@
 package pe.edu.upeu.reniecmovil.presentation.ciudadano
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -22,6 +24,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.FlipCameraAndroid
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Person
@@ -58,6 +61,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import pe.edu.upeu.reniecmovil.domain.model.CatalogoUbigeoReniec
 import pe.edu.upeu.reniecmovil.domain.model.Ciudadano
 import pe.edu.upeu.reniecmovil.domain.model.EstadoCivil
 import pe.edu.upeu.reniecmovil.domain.model.Sesion
@@ -122,17 +126,17 @@ fun CiudadanoScreen(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Padrón Nacional de Identificación",
+                        text = "Padrón Nacional PIDE • API RENIEC",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
                         text = if (puedeEliminarPadron) {
-                            "Perfil Admin: Control total de padrón y depuración habilitada"
+                            "Perfil Admin: Control total por Departamento / Provincia / Distrito"
                         } else if (puedeEscribirPadron) {
-                            "Perfil Brigadista: Empadronamiento activo (Borrado protegido)"
+                            "Perfil Brigadista: Empadronamiento por Ubigeo INEI/RENIEC"
                         } else {
-                            "Módulo Consulta: Solo búsqueda DNIe 3.0 y validación AFIS"
+                            "Módulo Consulta: Búsqueda por DNIe 3.0, Ubigeo y Huella AFIS"
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary
@@ -148,6 +152,47 @@ fun CiudadanoScreen(
             }
         }
 
+        // Filtro por Departamento (Ubigeo RENIEC)
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.LocationOn,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = "Filtrar Padrón por Departamento (Ubigeo INEI/RENIEC):",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    CatalogoUbigeoReniec.departamentos.forEach { dep ->
+                        FilterChip(
+                            selected = state.filtroDepartamento == dep,
+                            onClick = { viewModel.onFiltroDepartamentoChange(dep) },
+                            label = {
+                                Text(
+                                    text = if (dep == "TODOS") "TODOS (PERÚ)" else dep,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        )
+                    }
+                }
+            }
+        }
+
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -157,7 +202,7 @@ fun CiudadanoScreen(
                 OutlinedTextField(
                     value = state.filtroDniONombre,
                     onValueChange = viewModel::onFiltroChange,
-                    label = { Text("Buscar por DNI (8 dígitos), Apellidos o Ubigeo") },
+                    label = { Text("Buscar por DNI (8 dígitos), Apellidos o Distrito") },
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                     singleLine = true,
                     modifier = Modifier.weight(1f)
@@ -166,7 +211,7 @@ fun CiudadanoScreen(
                     onClick = viewModel::consultarDniExacto,
                     modifier = Modifier.height(54.dp)
                 ) {
-                    Text("Validar DNI")
+                    Text("API DNI")
                 }
             }
         }
@@ -233,13 +278,16 @@ fun CiudadanoScreen(
 
         item {
             Text(
-                text = "Ciudadanos en Padrón (${state.ciudadanosFiltrados.size})",
+                text = "Ciudadanos en ${if (state.filtroDepartamento == "TODOS") "Todo el Perú" else state.filtroDepartamento} (${state.ciudadanosFiltrados.size})",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold
             )
         }
 
         items(state.ciudadanosFiltrados, key = { it.id }) { ciudadano ->
+            val infoUbigeo = remember(ciudadano.ubigeo) {
+                CatalogoUbigeoReniec.buscarUbigeo(ciudadano.ubigeo)
+            }
             ElevatedCard(
                 onClick = { viewModel.seleccionarCiudadano(ciudadano) },
                 modifier = Modifier.fillMaxWidth(),
@@ -259,8 +307,17 @@ fun CiudadanoScreen(
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "${ciudadano.ubigeo} | Nac: ${ciudadano.fechaNacimiento}",
+                            text = if (infoUbigeo != null) {
+                                "Ubigeo ${infoUbigeo.codigo}: ${ciudadano.ubigeo}"
+                            } else {
+                                ciudadano.ubigeo
+                            },
                             style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "Domicilio: ${ciudadano.direccion} | Nac: ${ciudadano.fechaNacimiento}",
+                            style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -315,6 +372,9 @@ private fun TarjetaDniElectronicoInteractivo(
     val digitoVerificador = remember(ciudadano.dni) {
         (ciudadano.dni.sumOf { it.digitToIntOrNull() ?: 0 } % 9) + 1
     }
+    val ubigeoCatalogo = remember(ciudadano.ubigeo) {
+        CatalogoUbigeoReniec.buscarUbigeo(ciudadano.ubigeo)
+    }
 
     Card(
         modifier = Modifier
@@ -341,7 +401,7 @@ private fun TarjetaDniElectronicoInteractivo(
                         text = if (!mostrarReverso) {
                             "DOCUMENTO NACIONAL DE IDENTIDAD ELECTRÓNICO (ANVERSO)"
                         } else {
-                            "DNIe 3.0 • DATOS BIOMÉTRICOS Y ZONA MRZ (REVERSO)"
+                            "DNIe 3.0 • DATOS DE UBIGEO Y ZONA MRZ (REVERSO)"
                         },
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold
@@ -352,7 +412,7 @@ private fun TarjetaDniElectronicoInteractivo(
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
-                        text = "DNI ${ciudadano.dni}-$digitoVerificador",
+                        text = "CUI ${ciudadano.dni}-$digitoVerificador",
                         color = MaterialTheme.colorScheme.onPrimary,
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.ExtraBold,
@@ -399,7 +459,7 @@ private fun TarjetaDniElectronicoInteractivo(
                                 Icon(
                                     Icons.Default.Memory,
                                     contentDescription = "Chip Criptográfico",
-                                    tint = Color(0xFFB45309),
+                                    tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(14.dp)
                                 )
                                 Text(
@@ -436,8 +496,9 @@ private fun TarjetaDniElectronicoInteractivo(
                             style = MaterialTheme.typography.bodySmall
                         )
                         Text(
-                            text = "UBIGEO: ${ciudadano.ubigeo}",
-                            style = MaterialTheme.typography.bodySmall
+                            text = "UBIGEO (${ubigeoCatalogo?.codigo ?: "150101"}): ${ciudadano.ubigeo}",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.SemiBold
                         )
                     }
                 }
@@ -471,13 +532,18 @@ private fun TarjetaDniElectronicoInteractivo(
                         verticalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
                         Text(
-                            text = "DIRECCIÓN: ${ciudadano.direccion}",
+                            text = "DOMICILIO: ${ciudadano.direccion}",
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(
-                            text = "DISTRITO / PROV.: ${ciudadano.ubigeo}",
+                            text = "DPTO / PROV / DIST: ${ciudadano.ubigeo}",
                             style = MaterialTheme.typography.bodySmall
+                        )
+                        Text(
+                            text = "SEDE RENIEC: ${ubigeoCatalogo?.agenciaReniec ?: "Oficina Registral RENIEC"}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
                         )
                         Text(
                             text = "DONACIÓN DE ÓRGANOS: ${if (ciudadano.donacionOrganos) "SÍ AUTORIZA" else "NO ESPECIFICA"}",
@@ -513,7 +579,7 @@ private fun TarjetaDniElectronicoInteractivo(
                     val nom = ciudadano.nombres.replace(" ", "<").padEnd(14, '<').take(14)
                     Column(modifier = Modifier.padding(8.dp)) {
                         Text(
-                            text = "I<PER${ciudadano.dni}<$digitoVerificador<<<<<<<<<<<<<<<",
+                            text = "I<PER${ciudadano.dni}<$digitoVerificador<<<${ubigeoCatalogo?.codigo ?: "150101"}<<<<<<<",
                             fontFamily = FontFamily.Monospace,
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold
@@ -552,7 +618,7 @@ private fun TarjetaDniElectronicoInteractivo(
                         tint = MaterialTheme.colorScheme.primary
                     )
                     Text(
-                        text = if (!mostrarReverso) "Toca la tarjeta para girar el DNIe 3.0 (MRZ/QR)" else "Toca para volver al anverso",
+                        text = if (!mostrarReverso) "Toca la tarjeta para girar el DNIe 3.0 (Ubigeo/MRZ/QR)" else "Toca para volver al anverso",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.SemiBold
@@ -604,6 +670,9 @@ private fun DialogoVerificacionBiometricaAfis(
     ciudadano: Ciudadano,
     onCerrar: () -> Unit
 ) {
+    val ubigeoInfo = remember(ciudadano.ubigeo) {
+        CatalogoUbigeoReniec.buscarUbigeo(ciudadano.ubigeo)
+    }
     AlertDialog(
         onDismissRequest = onCerrar,
         icon = {
@@ -655,6 +724,7 @@ private fun DialogoVerificacionBiometricaAfis(
                 }
                 Text("Ciudadano: ${ciudadano.nombreCompleto}", fontWeight = FontWeight.Bold)
                 Text("DNI / CUI: ${ciudadano.dni}", style = MaterialTheme.typography.bodySmall)
+                Text("Ubigeo: ${ubigeoInfo?.etiquetaCompleta ?: ciudadano.ubigeo}", style = MaterialTheme.typography.bodySmall)
                 Text("Dedo capturado: Índice Derecho (Minucias: 42/42)", style = MaterialTheme.typography.bodySmall)
                 Text("Estado Padrón: HÁBIL SIN RESTRICCIONES", style = MaterialTheme.typography.bodySmall)
             }
@@ -751,7 +821,9 @@ private fun FormularioCiudadanoCard(
                 fontWeight = FontWeight.SemiBold
             )
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 EstadoCivil.entries.forEach { ec ->
@@ -763,10 +835,37 @@ private fun FormularioCiudadanoCard(
                 }
             }
 
+            Text(
+                text = "Seleccionar Ubigeo Rápido (Dpto / Prov / Distrito):",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                CatalogoUbigeoReniec.sedes.forEach { sede ->
+                    FilterChip(
+                        selected = form.ubigeo.contains(sede.distrito, ignoreCase = true) || form.ubigeo.contains(sede.codigo),
+                        onClick = {
+                            onCambio {
+                                it.copy(
+                                    ubigeo = sede.etiquetaCompleta,
+                                    ubigeoError = null
+                                )
+                            }
+                        },
+                        label = { Text(sede.etiquetaCorta, style = MaterialTheme.typography.labelSmall) }
+                    )
+                }
+            }
+
             OutlinedTextField(
                 value = form.ubigeo,
                 onValueChange = { valor -> onCambio { it.copy(ubigeo = valor, ubigeoError = null) } },
-                label = { Text("Ubigeo (Departamento / Provincia / Distrito)") },
+                label = { Text("Ubigeo Oficial (Código - Departamento / Provincia / Distrito)") },
                 isError = form.ubigeoError != null,
                 supportingText = form.ubigeoError?.let { { Text(it) } },
                 singleLine = true,

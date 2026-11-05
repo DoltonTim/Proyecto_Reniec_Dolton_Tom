@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import pe.edu.upeu.reniecmovil.domain.model.CatalogoUbigeoReniec
 import pe.edu.upeu.reniecmovil.domain.model.Ciudadano
 import pe.edu.upeu.reniecmovil.domain.model.EstadoCivil
 import pe.edu.upeu.reniecmovil.domain.repository.CiudadanoRepository
@@ -24,7 +25,7 @@ data class FormularioCiudadano(
     val apellidoMaterno: String = "",
     val fechaNacimiento: String = "2000-01-15",
     val estadoCivil: String = EstadoCivil.SOLTERO.name,
-    val ubigeo: String = "LIMA / LIMA / LURIGANCHO-CHOSICA",
+    val ubigeo: String = "150118 - LIMA / LIMA / LURIGANCHO-CHOSICA",
     val direccion: String = "",
     val donacionOrganos: Boolean = true,
     val dniError: String? = null,
@@ -39,6 +40,7 @@ data class FormularioCiudadano(
 data class CiudadanoUiState(
     val ciudadanos: List<Ciudadano> = emptyList(),
     val filtroDniONombre: String = "",
+    val filtroDepartamento: String = "TODOS",
     val ciudadanoSeleccionado: Ciudadano? = null,
     val editandoId: Long? = null,
     val mostrarFormulario: Boolean = false,
@@ -52,11 +54,15 @@ data class CiudadanoUiState(
     val ciudadanosFiltrados: List<Ciudadano>
         get() {
             val q = filtroDniONombre.trim().lowercase()
-            if (q.isBlank()) return ciudadanos
-            return ciudadanos.filter {
-                it.dni.lowercase().contains(q) ||
-                    it.nombreCompleto.lowercase().contains(q) ||
-                    it.ubigeo.lowercase().contains(q)
+            return ciudadanos.filter { c ->
+                val coincideDep = filtroDepartamento == "TODOS" ||
+                    CatalogoUbigeoReniec.detectarDepartamento(c.ubigeo).equals(filtroDepartamento, ignoreCase = true) ||
+                    c.ubigeo.contains(filtroDepartamento, ignoreCase = true)
+                val coincideTexto = q.isBlank() ||
+                    c.dni.lowercase().contains(q) ||
+                    c.nombreCompleto.lowercase().contains(q) ||
+                    c.ubigeo.lowercase().contains(q)
+                coincideDep && coincideTexto
             }
         }
 }
@@ -105,6 +111,18 @@ class CiudadanoViewModel(
         _uiState.update { it.copy(filtroDniONombre = texto, mensajeExito = null, mensajeError = null) }
     }
 
+    fun onFiltroDepartamentoChange(departamento: String) {
+        _uiState.update {
+            val nuevaLista = it.copy(filtroDepartamento = departamento).ciudadanosFiltrados
+            it.copy(
+                filtroDepartamento = departamento,
+                ciudadanoSeleccionado = nuevaLista.firstOrNull() ?: it.ciudadanoSeleccionado,
+                mensajeExito = null,
+                mensajeError = null
+            )
+        }
+    }
+
     fun seleccionarCiudadano(ciudadano: Ciudadano) {
         _uiState.update { it.copy(ciudadanoSeleccionado = ciudadano, mensajeExito = null) }
     }
@@ -118,13 +136,13 @@ class CiudadanoViewModel(
                         _uiState.update {
                             it.copy(
                                 ciudadanoSeleccionado = encontrado,
-                                mensajeExito = "Ciudadano con DNI ${encontrado.dni} verificado en Padrón RENIEC",
+                                mensajeExito = "Consulta PIDE / API RENIEC exitosa: DNI ${encontrado.dni} (${encontrado.ubigeo})",
                                 mensajeError = null
                             )
                         }
                     } else {
                         _uiState.update {
-                            it.copy(mensajeError = "No se encontró el DNI $dni en el padrón actual")
+                            it.copy(mensajeError = "No se encontró el DNI $dni en el padrón nacional")
                         }
                     }
                 },
@@ -216,7 +234,7 @@ class CiudadanoViewModel(
                             editandoId = null,
                             ciudadanoSeleccionado = guardado,
                             formulario = FormularioCiudadano(),
-                            mensajeExito = "Ciudadano ${guardado.nombreCompleto} (DNI ${guardado.dni}) guardado correctamente"
+                            mensajeExito = "Ciudadano ${guardado.nombreCompleto} (DNI ${guardado.dni}) guardado en Ubigeo ${guardado.ubigeo}"
                         )
                     }
                 },
