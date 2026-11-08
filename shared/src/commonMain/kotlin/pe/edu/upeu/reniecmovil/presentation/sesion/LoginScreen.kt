@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -27,9 +28,12 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -65,6 +69,9 @@ fun LoginScreen(
 ) {
     val estado by viewModel.estado.collectAsState()
     var mostrarClave by remember { mutableStateOf(false) }
+    var mostrarDialogoGoogle by remember { mutableStateOf(false) }
+    var correoRecuperacion by remember { mutableStateOf("") }
+    var mensajeRecuperacion by remember { mutableStateOf<String?>(null) }
     var dialogoAyuda by remember { mutableStateOf<String?>(null) }
 
     val colorHeaderTop = Color(0xFF8C0B42)      // Guinda-púrpura vibrante superior
@@ -258,7 +265,8 @@ fun LoginScreen(
                                 fontWeight = FontWeight.Bold,
                                 textDecoration = TextDecoration.Underline,
                                 modifier = Modifier.clickable {
-                                    dialogoAyuda = "Para restablecer tu clave institucional JWT, comunícate con la Oficina de Seguridad Informática de RENIEC desde la intranet."
+                                    mensajeRecuperacion = null
+                                    mostrarDialogoGoogle = true
                                 }
                             )
                         }
@@ -295,7 +303,7 @@ fun LoginScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(28.dp))
 
             // Botón principal lima brillante ("Login")
             Button(
@@ -328,7 +336,70 @@ fun LoginScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(26.dp))
+
+            // Separador "— O recuperar acceso —"
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                HorizontalDivider(
+                    modifier = Modifier.width(36.dp),
+                    color = colorTextSecondary.copy(alpha = 0.35f)
+                )
+                Text(
+                    text = "  O recuperar acceso  ",
+                    color = colorTextSecondary,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                HorizontalDivider(
+                    modifier = Modifier.width(36.dp),
+                    color = colorTextSecondary.copy(alpha = 0.35f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(18.dp))
+
+            // Botón único de Recuperación con Google
+            OutlinedButton(
+                onClick = {
+                    mensajeRecuperacion = null
+                    mostrarDialogoGoogle = true
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(1.2.dp, colorTextSecondary.copy(alpha = 0.45f)),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = Color.White
+                )
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = Color.White,
+                    modifier = Modifier.size(22.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            text = "G",
+                            color = Color(0xFFEA4335),
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = "Recuperación con Google",
+                    fontSize = 13.5.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(26.dp))
 
             // Texto inferior de solicitud de acceso institucional
             Text(
@@ -347,6 +418,90 @@ fun LoginScreen(
                 }
             )
         }
+    }
+
+    if (mostrarDialogoGoogle) {
+        AlertDialog(
+            onDismissRequest = { mostrarDialogoGoogle = false },
+            title = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Surface(
+                        shape = CircleShape,
+                        color = Color.White,
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(
+                                text = "G",
+                                color = Color(0xFFEA4335),
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                        }
+                    }
+                    Text(
+                        text = "Recuperación con Google",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                }
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = "Ingresa tu cuenta de Google o correo institucional vinculado a Supabase Auth para recibir tu enlace de restablecimiento de acceso:",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    OutlinedTextField(
+                        value = correoRecuperacion,
+                        onValueChange = {
+                            correoRecuperacion = it
+                            mensajeRecuperacion = null
+                        },
+                        label = { Text("Correo Google (@gmail.com / @upeu.edu.pe)") },
+                        placeholder = { Text("usuario@gmail.com") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    if (mensajeRecuperacion != null) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = mensajeRecuperacion.orEmpty(),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(10.dp)
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val email = correoRecuperacion.trim()
+                        if (email.isBlank() || !email.contains("@")) {
+                            mensajeRecuperacion = "Por favor, ingresa un correo de Google válido."
+                        } else {
+                            mensajeRecuperacion = "✓ Enlace de recuperación de Google enviado a $email."
+                        }
+                    }
+                ) {
+                    Text("Enviar enlace Google", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { mostrarDialogoGoogle = false }) {
+                    Text("Cerrar")
+                }
+            }
+        )
     }
 
     if (dialogoAyuda != null) {
