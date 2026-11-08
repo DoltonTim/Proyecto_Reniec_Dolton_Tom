@@ -1,0 +1,56 @@
+name: Compilar iOS (.ipa) para iPhone
+
+on:
+  push:
+    branches:
+      - master
+      - Dolton-aportando
+  workflow_dispatch:
+
+jobs:
+  build-ios-ipa:
+    name: Build RENIEC Movil iOS (.ipa)
+    runs-on: macos-15
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar JDK 17 para Kotlin Multiplatform
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Dar permisos de ejecucion a Gradle Wrapper
+        run: chmod +x ./gradlew
+
+      - name: Compilar aplicacion iOS (arm64) con Xcode
+        run: |
+          xcodebuild \
+            -project iosApp/iosApp.xcodeproj \
+            -scheme iosApp \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build/ios \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            build
+
+      - name: Empaquetar archivo .ipa para Sideloadly / AltStore
+        run: |
+          mkdir -p Payload
+          cp -R build/ios/Build/Products/Release-iphoneos/*.app Payload/
+          zip -r -9 ReniecMovil-UPeU-Supabase-iOS.ipa Payload
+          ls -lh ReniecMovil-UPeU-Supabase-iOS.ipa
+
+      - name: Subir instalador iPhone (.ipa) como Artifact descargable
+        uses: actions/upload-artifact@v4
+        with:
+          name: ReniecMovil-UPeU-Supabase-iOS-IPA
+          path: ReniecMovil-UPeU-Supabase-iOS.ipa
+          if-no-files-found: error
+          retention-days: 30

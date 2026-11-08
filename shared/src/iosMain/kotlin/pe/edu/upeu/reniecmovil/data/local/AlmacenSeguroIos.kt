@@ -1,15 +1,18 @@
 package pe.edu.upeu.reniecmovil.data.local
 
+import platform.Foundation.NSUserDefaults
+
 class AlmacenSeguroIos : AlmacenSeguro {
-    private var tokenAlmacenado: String? = null
+    private val prefs = NSUserDefaults.standardUserDefaults
+    private val keyToken = "reniec_jwt_token"
 
     override fun guardarToken(token: String) {
-        tokenAlmacenado = token
+        prefs.setObject(token, forKey = keyToken)
     }
 
-    override fun leerToken(): String? = tokenAlmacenado
+    override fun leerToken(): String? = prefs.stringForKey(keyToken)
 
     override fun borrarToken() {
-        tokenAlmacenado = null
+        prefs.removeObjectForKey(keyToken)
     }
 }
