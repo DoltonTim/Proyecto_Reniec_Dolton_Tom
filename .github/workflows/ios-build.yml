@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - master
-      - Dolton-aportando
   workflow_dispatch:
 
 jobs:
@@ -24,16 +23,31 @@ jobs:
           cache: 'gradle'
 
       - name: Dar permisos de ejecucion a Gradle Wrapper
-        run: chmod +x ./gradlew
+        run: |
+          tr -d '\r' < ./gradlew > ./gradlew.unix
+          mv ./gradlew.unix ./gradlew
+          chmod +x ./gradlew
+
+      - name: Compilar Framework Kotlin Multiplatform (Shared.framework arm64)
+        run: |
+          ./gradlew :shared:linkReleaseFrameworkIosArm64 --no-daemon --stacktrace
 
       - name: Compilar aplicacion iOS (arm64) con Xcode
         run: |
+          FRAMEWORK_DIR="$(pwd)/shared/build/bin/iosArm64/releaseFramework"
           xcodebuild \
             -project iosApp/iosApp.xcodeproj \
             -scheme iosApp \
             -configuration Release \
             -sdk iphoneos \
             -derivedDataPath build/ios \
+            OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED=YES \
+            FRAMEWORK_SEARCH_PATHS="\$(inherited) $FRAMEWORK_DIR" \
+            OTHER_LDFLAGS="\$(inherited) -ObjC -framework Shared -lsqlite3 -lc++" \
+            PRODUCT_BUNDLE_IDENTIFIER="pe.edu.upeu.reniecmovil.ReniecMovil" \
+            CODE_SIGN_STYLE=Manual \
+            DEVELOPMENT_TEAM="" \
+            PROVISIONING_PROFILE_SPECIFIER="" \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
@@ -44,6 +58,7 @@ jobs:
         run: |
           mkdir -p Payload
           cp -R build/ios/Build/Products/Release-iphoneos/*.app Payload/
+          codesign --force --deep --sign - Payload/*.app || true
           zip -r -9 ReniecMovil-UPeU-Supabase-iOS.ipa Payload
           ls -lh ReniecMovil-UPeU-Supabase-iOS.ipa
 
