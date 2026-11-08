@@ -18,7 +18,11 @@ data class SesionUiState(
     val clave: String = "",
     val cargando: Boolean = false,
     val sesion: Sesion? = null,
-    val error: String? = null
+    val error: String? = null,
+    val enviandoOtp: Boolean = false,
+    val codigoOtpEnviado: Boolean = false,
+    val mensajeOtp: String? = null,
+    val errorOtp: String? = null
 )
 
 class SesionViewModel(
@@ -40,6 +44,80 @@ class SesionViewModel(
 
     fun onClaveChange(clave: String) {
         _estado.update { it.copy(clave = clave, error = null) }
+    }
+
+    fun limpiarEstadoOtp() {
+        _estado.update {
+            it.copy(
+                enviandoOtp = false,
+                codigoOtpEnviado = false,
+                mensajeOtp = null,
+                errorOtp = null
+            )
+        }
+    }
+
+    fun enviarCodigoCorreoGoogle(correo: String) {
+        val limpio = correo.trim()
+        if (limpio.isBlank() || !limpio.contains("@")) {
+            _estado.update { it.copy(errorOtp = "Por favor, ingresa un correo de Google válido (@gmail.com)") }
+            return
+        }
+        viewModelScope.launch {
+            _estado.update { it.copy(enviandoOtp = true, errorOtp = null, mensajeOtp = null) }
+            iniciarSesionUseCase.enviarCodigoEmail(limpio)
+                .onSuccess {
+                    _estado.update {
+                        it.copy(
+                            enviandoOtp = false,
+                            codigoOtpEnviado = true,
+                            mensajeOtp = "✓ ¡Correo real enviado por Supabase Auth a $limpio! Revisa tu bandeja de entrada o Spam e ingresa el código o haz clic en el enlace.",
+                            errorOtp = null
+                        )
+                    }
+                }
+                .onFailure { fallo ->
+                    _estado.update {
+                        it.copy(
+                            enviandoOtp = false,
+                            errorOtp = "Supabase Auth: ${fallo.message ?: "Espera 60 segundos antes de solicitar otro código"}"
+                        )
+                    }
+                }
+        }
+    }
+
+    fun verificarCodigoCorreoGoogle(correo: String, codigo: String, onExito: () -> Unit = {}) {
+        val limpio = correo.trim()
+        val otp = codigo.trim()
+        if (otp.length < 6) {
+            _estado.update { it.copy(errorOtp = "Ingresa el código numérico enviado a tu correo") }
+            return
+        }
+        viewModelScope.launch {
+            _estado.update { it.copy(enviandoOtp = true, errorOtp = null) }
+            iniciarSesionUseCase.verificarCodigoEmail(limpio, otp)
+                .onSuccess { sesion ->
+                    _estado.update {
+                        it.copy(
+                            sesion = sesion,
+                            enviandoOtp = false,
+                            codigoOtpEnviado = false,
+                            mensajeOtp = null,
+                            errorOtp = null
+                        )
+                    }
+                    onExito()
+                }
+                .onFailure { fallo ->
+                    _estado.update {
+                        it.copy(
+                            enviandoOtp = false,
+                            errorOtp = fallo.message ?: "Código inválido o expirado"
+                        )
+                    }
+                }
+        }
     }
 
     fun verificarSesion() {

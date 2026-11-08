@@ -70,8 +70,8 @@ fun LoginScreen(
     val estado by viewModel.estado.collectAsState()
     var mostrarClave by remember { mutableStateOf(false) }
     var mostrarDialogoGoogle by remember { mutableStateOf(false) }
-    var correoRecuperacion by remember { mutableStateOf("") }
-    var mensajeRecuperacion by remember { mutableStateOf<String?>(null) }
+    var correoRecuperacion by remember { mutableStateOf("doltontomsistemas@gmail.com") }
+    var codigoOtp by remember { mutableStateOf("") }
     var dialogoAyuda by remember { mutableStateOf<String?>(null) }
 
     val colorHeaderTop = Color(0xFF8C0B42)      // Guinda-púrpura vibrante superior
@@ -265,7 +265,8 @@ fun LoginScreen(
                                 fontWeight = FontWeight.Bold,
                                 textDecoration = TextDecoration.Underline,
                                 modifier = Modifier.clickable {
-                                    mensajeRecuperacion = null
+                                    viewModel.limpiarEstadoOtp()
+                                    codigoOtp = ""
                                     mostrarDialogoGoogle = true
                                 }
                             )
@@ -362,10 +363,11 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // Botón único de Recuperación con Google
+            // Botón único de Recuperación con Google (Supabase Auth Real)
             OutlinedButton(
                 onClick = {
-                    mensajeRecuperacion = null
+                    viewModel.limpiarEstadoOtp()
+                    codigoOtp = ""
                     mostrarDialogoGoogle = true
                 },
                 modifier = Modifier
@@ -452,28 +454,53 @@ fun LoginScreen(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
-                        text = "Ingresa tu cuenta de Google o correo institucional vinculado a Supabase Auth para recibir tu enlace de restablecimiento de acceso:",
+                        text = "Supabase Auth enviará un correo real a tu bandeja de Gmail con un código OTP / enlace de acceso:",
                         style = MaterialTheme.typography.bodySmall
                     )
                     OutlinedTextField(
                         value = correoRecuperacion,
-                        onValueChange = {
-                            correoRecuperacion = it
-                            mensajeRecuperacion = null
-                        },
-                        label = { Text("Correo Google (@gmail.com / @upeu.edu.pe)") },
-                        placeholder = { Text("usuario@gmail.com") },
+                        onValueChange = { correoRecuperacion = it },
+                        label = { Text("Correo Google (@gmail.com)") },
+                        placeholder = { Text("doltontomsistemas@gmail.com") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
-                    if (mensajeRecuperacion != null) {
+
+                    if (estado.codigoOtpEnviado) {
+                        OutlinedTextField(
+                            value = codigoOtp,
+                            onValueChange = { codigoOtp = it.take(8) },
+                            label = { Text("Código recibido en tu Gmail (6 dígitos)") },
+                            placeholder = { Text("Ej: 123456") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+
+                    if (estado.mensajeOtp != null) {
                         Surface(
                             color = MaterialTheme.colorScheme.secondaryContainer,
                             shape = RoundedCornerShape(8.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(
-                                text = mensajeRecuperacion.orEmpty(),
+                                text = estado.mensajeOtp.orEmpty(),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(10.dp)
+                            )
+                        }
+                    }
+
+                    if (estado.errorOtp != null) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.errorContainer,
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = estado.errorOtp.orEmpty(),
+                                color = MaterialTheme.colorScheme.onErrorContainer,
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(10.dp)
@@ -483,17 +510,29 @@ fun LoginScreen(
                 }
             },
             confirmButton = {
-                Button(
-                    onClick = {
-                        val email = correoRecuperacion.trim()
-                        if (email.isBlank() || !email.contains("@")) {
-                            mensajeRecuperacion = "Por favor, ingresa un correo de Google válido."
-                        } else {
-                            mensajeRecuperacion = "✓ Enlace de recuperación de Google enviado a $email."
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (estado.codigoOtpEnviado && codigoOtp.length >= 6) {
+                        Button(
+                            onClick = {
+                                viewModel.verificarCodigoCorreoGoogle(correoRecuperacion, codigoOtp) {
+                                    mostrarDialogoGoogle = false
+                                    onLoginExitoso()
+                                }
+                            },
+                            enabled = !estado.enviandoOtp
+                        ) {
+                            Text("Verificar Código", fontWeight = FontWeight.Bold)
                         }
                     }
-                ) {
-                    Text("Enviar enlace Google", fontWeight = FontWeight.Bold)
+                    Button(
+                        onClick = { viewModel.enviarCodigoCorreoGoogle(correoRecuperacion) },
+                        enabled = !estado.enviandoOtp
+                    ) {
+                        Text(
+                            text = if (estado.enviandoOtp) "Enviando..." else if (estado.codigoOtpEnviado) "Reenviar Correo" else "Enviar a Gmail",
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             },
             dismissButton = {

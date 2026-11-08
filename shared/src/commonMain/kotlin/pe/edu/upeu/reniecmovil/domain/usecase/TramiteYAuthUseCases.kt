@@ -74,10 +74,18 @@ class EliminarTramiteUseCase(
 }
 
 class IniciarSesionUseCase(
-    private val authRepository: AuthRepository
+    val authRepository: AuthRepository
 ) {
     suspend operator fun invoke(credenciales: Credenciales): Result<Sesion> = resultadoDe {
         authRepository.iniciarSesion(credenciales)
+    }
+
+    suspend fun enviarCodigoEmail(correo: String): Result<Unit> = resultadoDe {
+        authRepository.enviarCodigoRecuperacionEmail(correo)
+    }
+
+    suspend fun verificarCodigoEmail(correo: String, codigoOtp: String): Result<Sesion> = resultadoDe {
+        authRepository.verificarCodigoRecuperacionEmail(correo, codigoOtp)
     }
 }
 

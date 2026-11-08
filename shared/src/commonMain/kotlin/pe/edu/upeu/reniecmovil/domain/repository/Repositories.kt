@@ -28,4 +28,6 @@ interface AuthRepository {
     suspend fun iniciarSesion(credenciales: Credenciales): Sesion
     suspend fun sesionGuardada(): Sesion?
     suspend fun cerrarSesion()
+    suspend fun enviarCodigoRecuperacionEmail(correo: String)
+    suspend fun verificarCodigoRecuperacionEmail(correo: String, codigoOtp: String): Sesion
 }

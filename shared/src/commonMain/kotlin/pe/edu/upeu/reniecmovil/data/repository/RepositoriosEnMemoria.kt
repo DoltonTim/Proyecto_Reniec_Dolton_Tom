@@ -198,4 +198,19 @@ class AuthRepositorioEnMemoria : AuthRepository {
     override suspend fun cerrarSesion() {
         sesionActual = null
     }
+
+    override suspend fun enviarCodigoRecuperacionEmail(correo: String) = Unit
+
+    override suspend fun verificarCodigoRecuperacionEmail(correo: String, codigoOtp: String): Sesion {
+        val sesion = Sesion(
+            token = "jwt-demo-otp-reniec-2026",
+            usuario = "dolton",
+            nombreCompleto = "Registrador Dolton Tom Meza ($correo)",
+            cargo = "Registrador Civil RENIEC",
+            sede = "Brigada Móvil UPeU - Ñaña",
+            permisos = setOf("PADRON_LEER", "PADRON_ESCRIBIR", "TRAMITES_LEER", "TRAMITES_ESCRIBIR")
+        )
+        sesionActual = sesion
+        return sesion
+    }
 }
