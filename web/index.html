@@ -53,7 +53,7 @@
   <div id="app-root" class="w-full max-w-md sm:max-w-5xl min-h-screen sm:min-h-[860px] bg-[#160821] sm:rounded-3xl sm:shadow-2xl sm:border sm:border-[#3d1e57] overflow-hidden flex flex-col relative">
   </div>
 
-  <!-- Modal AFIS / Ayuda -->
+  <!-- Modal Institucional -->
   <div id="modal-root" class="fixed inset-0 bg-black/75 z-50 hidden items-center justify-center p-4"></div>
 
   <script>
@@ -120,7 +120,7 @@
         clave: "Verifica2026!",
         usuario: "verificador",
         nombreCompleto: "Lic. Ana Torres (Módulo Consulta)",
-        cargo: "Verificador Biométrico AFIS y Ventanilla",
+        cargo: "Verificador de Padrón y Ventanilla",
         sede: "Agencia RENIEC Ate - Vitarte",
         permisos: ["ROLE_VERIFICADOR", "PADRON_LEER", "TRAMITES_LEER"]
       }
@@ -232,57 +232,6 @@
       return state.sesion && state.sesion.permisos.includes(permiso);
     }
 
-    function codigoHuellaAfis(dni) {
-      const limpio = (dni || "00000000").padEnd(8, "0");
-      let hash = 17;
-      for (let i = 0; i < limpio.length; i++) {
-        hash = (hash * 31 + (parseInt(limpio[i]) || 5)) % 9999;
-      }
-      return `AFIS-${limpio.slice(-4)}-${String(hash).padStart(4, "0")}`;
-    }
-
-    function abrirBuscadorPorHuella() {
-      const modal = document.getElementById("modal-root");
-      modal.innerHTML = `
-        <div class="bg-[#231033] border border-[#C6FF00] rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-3">
-          <div class="flex items-center gap-3">
-            <div class="w-12 h-12 rounded-full bg-[#C6FF00] text-[#14071E] flex items-center justify-center text-2xl">🧬</div>
-            <div>
-              <h3 class="text-base font-extrabold text-[#C6FF00]">Lector Biométrico AFIS • Búsqueda por Huella</h3>
-              <p class="text-xs text-[#C9B6D9]">Selecciona la huella dactilar para cargar todos los datos del ciudadano:</p>
-            </div>
-          </div>
-          <div class="space-y-2 max-h-64 overflow-y-auto">
-            ${state.ciudadanos.map(c => `
-              <button onclick="seleccionarPorHuella(${c.id})" class="w-full text-left p-3 rounded-xl bg-[#311747] hover:bg-[#4B125E] border border-[#C6FF00]/40 flex items-center gap-3 transition">
-                <span class="text-xl">🧬</span>
-                <div>
-                  <div class="text-xs font-extrabold text-[#C6FF00]">${codigoHuellaAfis(c.dni)} • DNI ${c.dni}</div>
-                  <div class="text-xs font-semibold text-white">${c.nombres} ${c.apellidoPaterno} ${c.apellidoMaterno}</div>
-                </div>
-              </button>
-            `).join("")}
-          </div>
-          <div class="flex justify-end pt-2">
-            <button onclick="cerrarModal()" class="px-4 py-2 rounded-xl border border-[#C9B6D9]/40 text-xs font-bold">Cerrar</button>
-          </div>
-        </div>
-      `;
-      modal.classList.remove("hidden");
-      modal.classList.add("flex");
-    }
-
-    function seleccionarPorHuella(idCiudadano) {
-      const c = state.ciudadanos.find(x => x.id === idCiudadano);
-      if (c) {
-        state.filtroDepartamento = "TODOS";
-        state.filtroTexto = c.dni;
-        state.ciudadanoSeleccionadoId = c.id;
-      }
-      cerrarModal();
-      render();
-    }
-
     function buscarUbigeo(texto) {
       const upper = (texto || "").toUpperCase();
       return SEDES_UBIGEO.find(s => upper.includes(s.codigo) || upper.includes(s.distrito)) ||
@@ -311,38 +260,15 @@
       modal.classList.remove("flex");
     }
 
-    function mostrarAfis(idCiudadano) {
-      const c = state.ciudadanos.find(x => x.id === idCiudadano);
-      if (!c) return;
-      const ub = buscarUbigeo(c.ubigeo);
-      mostrarModal(
-        "Verificación Biométrica AFIS • RENIEC",
-        `
-          <div class="p-3 rounded-xl bg-[#311747] border border-[#C6FF00]/40 flex items-center gap-3 mb-3">
-            <span class="text-2xl">🧬</span>
-            <div>
-              <div class="text-[#C6FF00] font-extrabold text-xs">IDENTIDAD VERIFICADA (99.8% Match)</div>
-              <div class="text-xs text-gray-300">Dedo Índice Derecho • Minucias: 42/42</div>
-            </div>
-          </div>
-          <p><b>Ciudadano:</b> ${c.nombres} ${c.apellidoPaterno} ${c.apellidoMaterno}</p>
-          <p><b>DNI / CUI:</b> ${c.dni}</p>
-          <p><b>Ubigeo INEI:</b> ${ub.codigo} - ${ub.departamento} / ${ub.provincia} / ${ub.distrito}</p>
-          <p><b>Sede Registral:</b> ${ub.agencia}</p>
-          <p class="text-[#40C4FF] font-bold">Estado Padrón: HÁBIL SIN RESTRICCIONES</p>
-        `
-      );
-    }
-
     // =========================================================================
     // 5. ACCIONES CRUD SINCRONIZADAS CON SUPABASE
     // =========================================================================
     function ejecutarLogin(e) {
       if (e) e.preventDefault();
-      const u = state.loginUsuario.trim().toLowerCase();
-      const p = state.loginClave;
+      const u = state.loginUsuario.trim().toLowerCase().split("@")[0];
+      const p = state.loginClave.trim();
       const cuenta = USUARIOS_RBAC[u];
-      if (!cuenta || cuenta.clave !== p) {
+      if (!cuenta || (cuenta.clave.toLowerCase() !== p.toLowerCase() && cuenta.clave.replace("!", "").toLowerCase() !== p.toLowerCase())) {
         state.loginError = "Credenciales inválidas. Verifique su usuario y contraseña institucional.";
         render();
         return;
@@ -559,21 +485,6 @@
               Login
             </button>
 
-            <div class="flex items-center justify-center gap-3 my-7">
-              <div class="h-px w-10 bg-[#BBA8C9]/35"></div>
-              <span class="text-xs text-[#BBA8C9] font-medium">O ingresar con</span>
-              <div class="h-px w-10 bg-[#BBA8C9]/35"></div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-3.5">
-              <button type="button" onclick="mostrarModal('Lectura DNIe 3.0 NFC', 'Acerca tu DNI Electrónico 3.0 al lector NFC para autenticación criptográfica PKI.')" class="h-11 rounded-xl border border-[#BBA8C9]/30 flex items-center justify-center gap-2 text-xs font-bold text-white hover:bg-white/5">
-                <span class="text-[#FF5252]">📡</span> DNIe NFC
-              </button>
-              <button type="button" onclick="mostrarModal('Biometría Dactilar AFIS', 'Conecta el lector óptico biométrico o utiliza el sensor de huella del equipo para validación AFIS.')" class="h-11 rounded-xl border border-[#BBA8C9]/30 flex items-center justify-center gap-2 text-xs font-bold text-white hover:bg-white/5">
-                <span class="text-[#40C4FF]">🧬</span> Huella AFIS
-              </button>
-            </div>
-
             <p onclick="mostrarModal('Alta de Operadores RENIEC', 'El alta de nuevos operadores y brigadistas es gestionada exclusivamente por la Jefatura Regional de Registro Civil.')" class="text-center text-xs text-[#BBA8C9] mt-7 cursor-pointer">
               ¿No tienes cuenta activa? <span class="text-white font-extrabold underline">Solicitar acceso</span>
             </p>
@@ -618,7 +529,7 @@
               <p class="text-xs font-extrabold mt-2 text-[#C6FF00]">
                 ${puedeVerRecaudacion
                   ? `Recaudación Tasa Banco de la Nación: S/ ${recaudacion}.00`
-                  : `Modo Operativo: ${puedeEscribirTramite ? 'Registro y Sincronización Activa' : 'Solo Consulta DNIe 3.0 y Verificación AFIS'}`}
+                  : `Modo Operativo: ${puedeEscribirTramite ? 'Registro y Sincronización Activa' : 'Consulta de Padrón y Trámites DNI'}`}
               </p>
             </div>
             <div class="w-11 h-11 rounded-full bg-[#C6FF00] text-[#14071E] flex items-center justify-center font-black text-lg">
@@ -702,7 +613,7 @@
             <div>
               <h2 class="text-base sm:text-lg font-extrabold">Padrón Nacional PIDE • Supabase Cloud</h2>
               <p class="text-xs text-[#C6FF00]">
-                ${puedeEliminar ? 'Perfil Admin: Control total por Departamento / Provincia / Distrito' : puedeEscribir ? 'Perfil Brigadista: Empadronamiento activo (Borrado protegido)' : 'Módulo Consulta: Búsqueda por DNIe 3.0, Ubigeo y Huella AFIS'}
+                ${puedeEliminar ? 'Perfil Admin: Control total por Departamento / Provincia / Distrito' : puedeEscribir ? 'Perfil Brigadista: Empadronamiento activo (Borrado protegido)' : 'Módulo Consulta: Búsqueda por DNIe 3.0 y Ubigeo INEI/RENIEC'}
               </p>
             </div>
             ${puedeEscribir ? `
@@ -793,10 +704,6 @@
               ` : `
                 <div class="space-y-2.5">
                   <div class="flex items-center justify-between gap-3 text-xs">
-                    <div class="p-2.5 rounded-xl bg-[#231033] text-center">
-                      <div class="text-2xl">🧬</div>
-                      <div class="text-[10px] font-bold text-[#C6FF00]">ÍNDICE DER.</div>
-                    </div>
                     <div class="flex-1 space-y-0.5">
                       <div><b>DOMICILIO:</b> ${seleccionado.direccion}</div>
                       <div><b>DPTO / PROV / DIST:</b> ${seleccionado.ubigeo}</div>
@@ -818,8 +725,7 @@
               <div class="mt-3 pt-2 border-t border-white/10 flex flex-wrap items-center justify-between gap-2">
                 <span class="text-[11px] text-[#C6FF00] font-semibold">🔄 Toca la tarjeta para girar el DNIe 3.0 (Anverso / Reverso MRZ)</span>
                 <div class="flex gap-2" onclick="event.stopPropagation();">
-                  ${puedeTramite ? `<button onclick="iniciarTramiteDesdeCiudadano(${seleccionado.id})" class="px-3 py-1 rounded-lg bg-[#C6FF00] text-[#14071E] font-extrabold text-xs">+ Trámite</button>` : ''}
-                  <button onclick="mostrarAfis(${seleccionado.id})" class="px-3 py-1 rounded-lg bg-[#311747] text-white font-bold text-xs">🧬 AFIS Huella</button>
+                  ${puedeTramite ? `<button onclick="iniciarTramiteDesdeCiudadano(${seleccionado.id})" class="px-3 py-1 rounded-lg bg-[#C6FF00] text-[#14071E] font-extrabold text-xs">+ Iniciar Trámite</button>` : ''}
                 </div>
               </div>
             </div>
@@ -839,7 +745,6 @@
                     <div class="text-[11px] text-[#C9B6D9]">Domicilio: ${c.direccion} | Nac: ${c.fechaNacimiento}</div>
                   </div>
                   <div class="flex items-center gap-1" onclick="event.stopPropagation();">
-                    <button onclick="mostrarAfis(${c.id})" title="Verificar Huella AFIS" class="p-2 rounded-lg hover:bg-white/10 text-[#C6FF00]">🧬</button>
                     ${puedeEscribir ? `<button onclick="state.editandoCiudadanoId = ${c.id}; state.formCiudadano = {...state.ciudadanos.find(x=>x.id===${c.id})}; state.mostrarFormCiudadano = true; render();" title="Editar" class="p-2 rounded-lg hover:bg-white/10">✏️</button>` : ''}
                     ${puedeEliminar ? `<button onclick="eliminarCiudadano(${c.id})" title="Eliminar" class="p-2 rounded-lg hover:bg-white/10 text-[#FF5252]">🗑️</button>` : puedeEscribir ? `<span title="Borrado protegido en Brigada" class="p-2 opacity-50">🔒</span>` : ''}
                   </div>

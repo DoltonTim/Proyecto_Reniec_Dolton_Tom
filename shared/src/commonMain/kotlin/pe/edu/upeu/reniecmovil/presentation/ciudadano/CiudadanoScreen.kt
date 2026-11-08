@@ -1,6 +1,5 @@
 package pe.edu.upeu.reniecmovil.presentation.ciudadano
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -17,14 +16,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.FlipCameraAndroid
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Lock
@@ -33,7 +29,6 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PostAdd
 import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -62,7 +57,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import pe.edu.upeu.reniecmovil.domain.model.CatalogoUbigeoReniec
 import pe.edu.upeu.reniecmovil.domain.model.Ciudadano
@@ -76,31 +70,11 @@ fun CiudadanoScreen(
     onIniciarTramiteParaCiudadano: (Ciudadano) -> Unit
 ) {
     val state by viewModel.uiState.collectAsState()
-    var ciudadanoParaAfis by remember { mutableStateOf<Ciudadano?>(null) }
     var ciudadanoParaEliminar by remember { mutableStateOf<Ciudadano?>(null) }
-    var mostrarBuscadorBiometrico by remember { mutableStateOf(false) }
 
     val puedeEscribirPadron = sesion.puede("PADRON_ESCRIBIR")
     val puedeEliminarPadron = sesion.puede("PADRON_ELIMINAR") || sesion.puede("ROLE_ADMIN")
     val puedeCrearTramite = sesion.puede("TRAMITES_ESCRIBIR")
-
-    ciudadanoParaAfis?.let { c ->
-        DialogoVerificacionBiometricaAfis(
-            ciudadano = c,
-            onCerrar = { ciudadanoParaAfis = null }
-        )
-    }
-
-    if (mostrarBuscadorBiometrico) {
-        DialogoEscanerBiometricoBusqueda(
-            ciudadanos = state.ciudadanos,
-            onCiudadanoIdentificado = { encontrado ->
-                mostrarBuscadorBiometrico = false
-                viewModel.buscarPorHuellaBiometrica(encontrado)
-            },
-            onCerrar = { mostrarBuscadorBiometrico = false }
-        )
-    }
 
     ciudadanoParaEliminar?.let { c ->
         AlertDialog(
@@ -147,11 +121,11 @@ fun CiudadanoScreen(
                     )
                     Text(
                         text = if (puedeEliminarPadron) {
-                            "Perfil Admin: Control total por Ubigeo y Huella Dactilar AFIS"
+                            "Perfil Admin: Control total por Departamento, Provincia y Distrito"
                         } else if (puedeEscribirPadron) {
-                            "Perfil Brigadista: Empadronamiento con Captura Biométrica AFIS"
+                            "Perfil Brigadista: Empadronamiento y actualización de ciudadanos"
                         } else {
-                            "Módulo Consulta: Búsqueda por Huella AFIS, DNIe 3.0 y Ubigeo"
+                            "Módulo Consulta: Búsqueda por DNIe 3.0 y Ubigeo INEI/RENIEC"
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary
@@ -208,48 +182,26 @@ fun CiudadanoScreen(
             }
         }
 
-        // Buscador por DNI, Nombre, Ubigeo o Escáner de Huella Dactilar AFIS
+        // Buscador por DNI, Nombre o Ubigeo
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = state.filtroDniONombre,
+                    onValueChange = viewModel::onFiltroChange,
+                    label = { Text("Buscar por DNI (8 dígitos), Apellidos o Distrito") },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f)
+                )
+                FilledTonalButton(
+                    onClick = viewModel::consultarDniExacto,
+                    modifier = Modifier.height(54.dp)
                 ) {
-                    OutlinedTextField(
-                        value = state.filtroDniONombre,
-                        onValueChange = viewModel::onFiltroChange,
-                        label = { Text("Buscar por DNI, Apellidos, Distrito o Código AFIS") },
-                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                        singleLine = true,
-                        modifier = Modifier.weight(1f)
-                    )
-                    FilledTonalButton(
-                        onClick = viewModel::consultarDniExacto,
-                        modifier = Modifier.height(54.dp)
-                    ) {
-                        Text("API DNI")
-                    }
-                }
-
-                // Botón Destacado de Búsqueda Rápida por Huella Dactilar AFIS
-                Button(
-                    onClick = { mostrarBuscadorBiometrico = true },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Fingerprint,
-                        contentDescription = null,
-                        modifier = Modifier.size(22.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "BUSCAR CIUDADANO POR HUELLA DACTILAR (AFIS)",
-                        fontWeight = FontWeight.ExtraBold
-                    )
+                    Text("API DNI")
                 }
             }
         }
@@ -308,7 +260,6 @@ fun CiudadanoScreen(
                     puedeCrearTramite = puedeCrearTramite,
                     puedeEditar = puedeEscribirPadron,
                     onIniciarTramite = { onIniciarTramiteParaCiudadano(seleccionado) },
-                    onVerificarHuella = { ciudadanoParaAfis = seleccionado },
                     onEditar = { viewModel.iniciarEdicion(seleccionado) }
                 )
             }
@@ -365,25 +316,12 @@ fun CiudadanoScreen(
                             color = MaterialTheme.colorScheme.primary
                         )
                         Text(
-                            text = "Huella Registrada: ${ciudadano.codigoHuellaAfis} (Índice Der.)",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.secondary
-                        )
-                        Text(
                             text = "Domicilio: ${ciudadano.direccion} | Nac: ${ciudadano.fechaNacimiento}",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = { ciudadanoParaAfis = ciudadano }) {
-                            Icon(
-                                Icons.Default.Fingerprint,
-                                contentDescription = "Verificar Huella AFIS",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
                         if (puedeEscribirPadron) {
                             IconButton(onClick = { viewModel.iniciarEdicion(ciudadano) }) {
                                 Icon(Icons.Default.Edit, contentDescription = "Editar")
@@ -415,125 +353,11 @@ fun CiudadanoScreen(
 }
 
 @Composable
-private fun DialogoEscanerBiometricoBusqueda(
-    ciudadanos: List<Ciudadano>,
-    onCiudadanoIdentificado: (Ciudadano) -> Unit,
-    onCerrar: () -> Unit
-) {
-    var ciudadanoElegido by remember { mutableStateOf(ciudadanos.firstOrNull()) }
-
-    AlertDialog(
-        onDismissRequest = onCerrar,
-        icon = {
-            Surface(
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.size(72.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Default.Fingerprint,
-                        contentDescription = null,
-                        modifier = Modifier.size(44.dp)
-                    )
-                }
-            }
-        },
-        title = {
-            Text(
-                text = "Lector Biométrico AFIS • Búsqueda por Huella",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.ExtraBold,
-                textAlign = TextAlign.Center
-            )
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(
-                    text = "Coloca el dedo en el sensor biométrico o selecciona la huella dactilar capturada en el padrón para cargar todos sus datos automáticamente:",
-                    style = MaterialTheme.typography.bodySmall
-                )
-
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    ciudadanos.take(6).forEach { c ->
-                        val seleccionado = ciudadanoElegido?.id == c.id
-                        Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = if (seleccionado) {
-                                MaterialTheme.colorScheme.primaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.surfaceVariant
-                            },
-                            border = if (seleccionado) {
-                                BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary)
-                            } else {
-                                null
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { ciudadanoElegido = c }
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Fingerprint,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = "${c.codigoHuellaAfis} • DNI ${c.dni}",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.ExtraBold,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                    Text(
-                                        text = c.nombreCompleto,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    ciudadanoElegido?.let { onCiudadanoIdentificado(it) }
-                },
-                enabled = ciudadanoElegido != null
-            ) {
-                Icon(Icons.Default.Fingerprint, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Escanear y Cargar Datos", fontWeight = FontWeight.Bold)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onCerrar) {
-                Text("Cancelar")
-            }
-        }
-    )
-}
-
-@Composable
 private fun TarjetaDniElectronicoInteractivo(
     ciudadano: Ciudadano,
     puedeCrearTramite: Boolean,
     puedeEditar: Boolean,
     onIniciarTramite: () -> Unit,
-    onVerificarHuella: () -> Unit,
     onEditar: () -> Unit
 ) {
     var mostrarReverso by remember(ciudadano.id) { mutableStateOf(false) }
@@ -668,12 +492,6 @@ private fun TarjetaDniElectronicoInteractivo(
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.SemiBold
                         )
-                        Text(
-                            text = "HUELLA AFIS: ${ciudadano.codigoHuellaAfis}",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = MaterialTheme.colorScheme.secondary
-                        )
                     }
                 }
             } else {
@@ -682,25 +500,6 @@ private fun TarjetaDniElectronicoInteractivo(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = MaterialTheme.colorScheme.surface,
-                        modifier = Modifier.size(66.dp)
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                Icons.Default.Fingerprint,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(36.dp)
-                            )
-                            Text("ÍNDICE DER.", style = MaterialTheme.typography.labelSmall)
-                        }
-                    }
-
                     Column(
                         modifier = Modifier.weight(1f),
                         verticalArrangement = Arrangement.spacedBy(2.dp)
@@ -800,116 +599,37 @@ private fun TarjetaDniElectronicoInteractivo(
                 }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            if (puedeCrearTramite || puedeEditar) {
+                Spacer(modifier = Modifier.height(10.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                if (puedeCrearTramite) {
-                    Button(
-                        onClick = onIniciarTramite,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(Icons.Default.PostAdd, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Trámite", style = MaterialTheme.typography.labelMedium)
-                    }
-                }
-                FilledTonalButton(
-                    onClick = onVerificarHuella,
-                    modifier = Modifier.weight(1f)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(Icons.Default.Fingerprint, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("AFIS Huella", style = MaterialTheme.typography.labelMedium)
-                }
-                if (puedeEditar) {
-                    OutlinedButton(
-                        onClick = onEditar,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Editar", style = MaterialTheme.typography.labelMedium)
+                    if (puedeCrearTramite) {
+                        Button(
+                            onClick = onIniciarTramite,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Default.PostAdd, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Iniciar Trámite", style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+                    if (puedeEditar) {
+                        OutlinedButton(
+                            onClick = onEditar,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Editar Ficha", style = MaterialTheme.typography.labelMedium)
+                        }
                     }
                 }
             }
         }
     }
-}
-
-@Composable
-private fun DialogoVerificacionBiometricaAfis(
-    ciudadano: Ciudadano,
-    onCerrar: () -> Unit
-) {
-    val ubigeoInfo = remember(ciudadano.ubigeo) {
-        CatalogoUbigeoReniec.buscarUbigeo(ciudadano.ubigeo)
-    }
-    AlertDialog(
-        onDismissRequest = onCerrar,
-        icon = {
-            Surface(
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.primaryContainer,
-                modifier = Modifier.size(64.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        Icons.Default.Fingerprint,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(40.dp)
-                    )
-                }
-            }
-        },
-        title = {
-            Text(
-                text = "Verificación Biométrica AFIS - RENIEC",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Surface(
-                    color = MaterialTheme.colorScheme.secondaryContainer,
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.padding(10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.VerifiedUser,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = "IDENTIDAD VERIFICADA (99.8% Match)",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.ExtraBold
-                        )
-                    }
-                }
-                Text("Ciudadano: ${ciudadano.nombreCompleto}", fontWeight = FontWeight.Bold)
-                Text("DNI / CUI: ${ciudadano.dni}", style = MaterialTheme.typography.bodySmall)
-                Text("Código Biométrico AFIS: ${ciudadano.codigoHuellaAfis}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
-                Text("Ubigeo: ${ubigeoInfo?.etiquetaCompleta ?: ciudadano.ubigeo}", style = MaterialTheme.typography.bodySmall)
-                Text("Dedo capturado: Índice Derecho (Minucias: 42/42)", style = MaterialTheme.typography.bodySmall)
-                Text("Estado Padrón: HÁBIL SIN RESTRICCIONES", style = MaterialTheme.typography.bodySmall)
-            }
-        },
-        confirmButton = {
-            Button(onClick = onCerrar) {
-                Text("Aceptar Conformidad")
-            }
-        }
-    )
 }
 
 @Composable
@@ -921,13 +641,6 @@ private fun FormularioCiudadanoCard(
     onGuardar: () -> Unit,
     onCancelar: () -> Unit
 ) {
-    val dedosDisponibles = listOf("Índice Derecho", "Pulgar Derecho", "Índice Izquierdo", "Pulgar Izquierdo")
-    val codigoPreview = remember(form.dni) {
-        val limpio = form.dni.padEnd(8, '0')
-        val hash = limpio.fold(17) { acc, ch -> (acc * 31 + (ch.digitToIntOrNull() ?: 5)) % 9999 }
-        "AFIS-${limpio.takeLast(4)}-${hash.toString().padStart(4, '0')}"
-    }
-
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp)
@@ -1064,94 +777,6 @@ private fun FormularioCiudadanoCard(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Módulo de Captura de Huella Dactilar AFIS durante el Registro
-            Surface(
-                shape = RoundedCornerShape(14.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                border = BorderStroke(
-                    width = 1.5.dp,
-                    color = if (form.huellaCapturada) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
-                ),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Fingerprint,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(26.dp)
-                            )
-                            Column {
-                                Text(
-                                    text = "Registro Biométrico de Huella Dactilar (AFIS)",
-                                    style = MaterialTheme.typography.labelLarge,
-                                    fontWeight = FontWeight.ExtraBold
-                                )
-                                Text(
-                                    text = if (form.huellaCapturada) {
-                                        "Huella vinculada: $codigoPreview (${form.dedoSeleccionado})"
-                                    } else {
-                                        "Pendiente: toca 'Capturar Huella' para vincular al DNI"
-                                    },
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = if (form.huellaCapturada) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                        if (form.huellaCapturada) {
-                            Icon(
-                                imageVector = Icons.Default.CheckCircle,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        dedosDisponibles.forEach { dedo ->
-                            FilterChip(
-                                selected = form.dedoSeleccionado == dedo,
-                                onClick = { onCambio { it.copy(dedoSeleccionado = dedo) } },
-                                label = { Text(dedo, style = MaterialTheme.typography.labelSmall) }
-                            )
-                        }
-                    }
-
-                    FilledTonalButton(
-                        onClick = { onCambio { it.copy(huellaCapturada = true) } },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Default.Fingerprint, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = if (form.huellaCapturada) {
-                                "✓ HUELLA AFIS CAPTURADA ($codigoPreview) - VOLVER A ESCANEAR"
-                            } else {
-                                "ESCANEAR Y REGISTRAR HUELLA DACTILAR"
-                            },
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
-
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -1171,7 +796,7 @@ private fun FormularioCiudadanoCard(
                     enabled = !guardando,
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text(if (esEdicion) "Guardar Cambios" else "Registrar con Huella AFIS")
+                    Text(if (esEdicion) "Guardar Cambios" else "Registrar Ciudadano")
                 }
                 OutlinedButton(
                     onClick = onCancelar,

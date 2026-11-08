@@ -165,7 +165,7 @@ fun InicioScreen(
                         )
                     } else {
                         Text(
-                            text = "Modo Operativo: ${if (puedeRegistrarTramite) "Registro y Sincronización" else "Solo Consulta y Verificación AFIS"}",
+                            text = "Modo Operativo: ${if (puedeRegistrarTramite) "Registro y Sincronización" else "Consulta de Padrón y Trámites DNI"}",
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.secondary

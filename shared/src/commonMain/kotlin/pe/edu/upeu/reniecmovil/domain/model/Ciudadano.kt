@@ -28,10 +28,4 @@ data class Ciudadano(
 ) {
     val nombreCompleto: String
         get() = "$nombres $apellidoPaterno $apellidoMaterno".trim()
-
-    val codigoHuellaAfis: String
-        get() {
-            val hash = dni.fold(17) { acc, ch -> (acc * 31 + (ch.digitToIntOrNull() ?: 5)) % 9999 }
-            return "AFIS-${dni.takeLast(4)}-${hash.toString().padStart(4, '0')}"
-        }
 }

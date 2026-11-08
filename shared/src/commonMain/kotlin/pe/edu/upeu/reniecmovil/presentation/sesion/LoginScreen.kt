@@ -21,19 +21,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Badge
-import androidx.compose.material.icons.filled.Fingerprint
-import androidx.compose.material.icons.filled.Nfc
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -217,7 +213,7 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Campo 2: Password + enlace "Forgot?"
+            // Campo 2: Password + enlace "¿Olvidaste?"
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
                     text = "Password",
@@ -299,7 +295,7 @@ fun LoginScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
             // Botón principal lima brillante ("Login")
             Button(
@@ -332,95 +328,9 @@ fun LoginScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
-            // Separador "— Or continue with —"
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                HorizontalDivider(
-                    modifier = Modifier.width(36.dp),
-                    color = colorTextSecondary.copy(alpha = 0.35f)
-                )
-                Text(
-                    text = "  O ingresar con  ",
-                    color = colorTextSecondary,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium
-                )
-                HorizontalDivider(
-                    modifier = Modifier.width(36.dp),
-                    color = colorTextSecondary.copy(alpha = 0.35f)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Dos botones inferiores con borde sutil (estilo Google / Facebook de la foto)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                OutlinedButton(
-                    onClick = {
-                        dialogoAyuda = "Acerca tu DNI Electrónico 3.0 al lector NFC posterior del dispositivo móvil para lectura criptográfica."
-                    },
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(46.dp),
-                    shape = RoundedCornerShape(10.dp),
-                    border = BorderStroke(1.dp, colorTextSecondary.copy(alpha = 0.3f)),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = Color.White
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Nfc,
-                        contentDescription = "DNIe NFC",
-                        tint = Color(0xFFFF5252),
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "DNIe NFC",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                OutlinedButton(
-                    onClick = {
-                        dialogoAyuda = "Conecta el lector óptico biométrico o utiliza el sensor de huella del equipo para validación AFIS."
-                    },
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(46.dp),
-                    shape = RoundedCornerShape(10.dp),
-                    border = BorderStroke(1.dp, colorTextSecondary.copy(alpha = 0.3f)),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = Color.White
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Fingerprint,
-                        contentDescription = "Huella AFIS",
-                        tint = Color(0xFF40C4FF),
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Huella AFIS",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(28.dp))
-
-            // Texto inferior estilo "Don't have account? Register now"
+            // Texto inferior de solicitud de acceso institucional
             Text(
                 text = buildAnnotatedString {
                     withStyle(SpanStyle(color = colorTextSecondary)) {

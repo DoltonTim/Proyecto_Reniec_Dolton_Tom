@@ -52,7 +52,7 @@ class AuthRepositorioRest(
                 token = "jwt-supabase-verificador-2026",
                 usuario = "verificador",
                 nombreCompleto = "Lic. Ana Torres (Módulo Consulta)",
-                cargo = "Verificador Biométrico AFIS y Ventanilla",
+                cargo = "Verificador de Padrón y Ventanilla",
                 sede = "Agencia RENIEC Ate - Vitarte",
                 permisos = setOf(
                     "ROLE_VERIFICADOR",
@@ -92,7 +92,7 @@ class AuthRepositorioRest(
                 token = tokenPuro,
                 usuario = "verificador",
                 nombreCompleto = "Lic. Ana Torres (Módulo Consulta)",
-                cargo = "Verificador Biométrico AFIS y Ventanilla",
+                cargo = "Verificador de Padrón y Ventanilla",
                 sede = "Agencia RENIEC Ate - Vitarte",
                 permisos = setOf(
                     "ROLE_VERIFICADOR",
