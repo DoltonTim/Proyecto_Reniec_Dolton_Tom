@@ -7,23 +7,27 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import pe.edu.upeu.reniecmovil.data.remote.AuditoriaApi
+import pe.edu.upeu.reniecmovil.data.remote.dto.AuditoriaPayloadDto
 import pe.edu.upeu.reniecmovil.domain.model.Ciudadano
 import pe.edu.upeu.reniecmovil.domain.model.EstadoTramiteDni
 import pe.edu.upeu.reniecmovil.domain.model.TipoTramiteDni
 import pe.edu.upeu.reniecmovil.domain.model.TramiteDni
 import pe.edu.upeu.reniecmovil.domain.repository.TramiteRepository
+import pe.edu.upeu.reniecmovil.domain.usecase.BuscarCiudadanoPorDniUseCase
 import pe.edu.upeu.reniecmovil.domain.usecase.EliminarTramiteUseCase
 import pe.edu.upeu.reniecmovil.domain.usecase.GuardarTramiteUseCase
 import pe.edu.upeu.reniecmovil.domain.usecase.ListarTramitesUseCase
 import pe.edu.upeu.reniecmovil.domain.usecase.TramiteInvalidoException
 import pe.edu.upeu.reniecmovil.domain.usecase.resultadoDe
+import pe.edu.upeu.reniecmovil.obtenerInfoDispositivo
 
 data class FormularioTramite(
     val dniCiudadano: String = "",
     val nombreCiudadano: String = "",
     val tipoTramite: String = TipoTramiteDni.RENOVACION.name,
     val estado: String = EstadoTramiteDni.PENDIENTE.name,
-    val ubigeoDestino: String = "LIMA / LURIGANCHO - AGENCIA ÑAÑA",
+    val ubigeoDestino: String = "150118 - LIMA / LIMA / LURIGANCHO-CHOSICA (Agencia RENIEC Ñaña - UPeU)",
     val observaciones: String = "",
     val dniError: String? = null,
     val nombreError: String? = null,
@@ -38,6 +42,9 @@ data class TramiteUiState(
     val editandoId: Long? = null,
     val mostrarFormulario: Boolean = false,
     val formulario: FormularioTramite = FormularioTramite(),
+    val tramiteVoucherActivo: TramiteDni? = null,
+    val tramiteBiometriaActivo: TramiteDni? = null,
+    val buscandoDniPadron: Boolean = false,
     val sincronizando: Boolean = false,
     val guardando: Boolean = false,
     val avisoRed: String? = null,
@@ -66,7 +73,9 @@ class TramiteViewModel(
     private val repository: TramiteRepository,
     private val listarTramites: ListarTramitesUseCase = ListarTramitesUseCase(repository),
     private val guardarTramite: GuardarTramiteUseCase = GuardarTramiteUseCase(repository),
-    private val eliminarTramite: EliminarTramiteUseCase = EliminarTramiteUseCase(repository)
+    private val eliminarTramite: EliminarTramiteUseCase = EliminarTramiteUseCase(repository),
+    private val buscarCiudadanoPorDni: BuscarCiudadanoPorDniUseCase? = null,
+    private val auditoriaApi: AuditoriaApi? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(TramiteUiState())
@@ -97,6 +106,95 @@ class TramiteViewModel(
         }
     }
 
+    fun abrirVoucherQr(tramite: TramiteDni?) {
+        _uiState.update { it.copy(tramiteVoucherActivo = tramite) }
+    }
+
+    fun abrirBiometriaTramite(tramite: TramiteDni?) {
+        _uiState.update { it.copy(tramiteBiometriaActivo = tramite) }
+    }
+
+    fun confirmarBiometriaYAprobar(
+        usuario: String,
+        rol: String,
+        modo: String,
+        puntaje: String
+    ) {
+        val tramite = _uiState.value.tramiteBiometriaActivo ?: return
+        _uiState.update { it.copy(tramiteBiometriaActivo = null) }
+        cambiarEstadoRapido(tramite, EstadoTramiteDni.ATENDIDO, usuario, rol)
+        registrarAuditoria(
+            usuario = usuario,
+            rol = rol,
+            accion = "ENTREGA_DNI_BIOMETRICA",
+            referenciaDni = tramite.dniCiudadano,
+            detalle = "Trámite ${tramite.tipoTramite} aprobado con $modo ($puntaje) para ${tramite.nombreCiudadano}",
+            canal = "Google Analytics + Clarity + Píxel TikTok"
+        )
+    }
+
+    fun registrarAuditoria(
+        usuario: String,
+        rol: String,
+        accion: String,
+        referenciaDni: String,
+        detalle: String,
+        canal: String = "Google Analytics + Clarity"
+    ) {
+        viewModelScope.launch {
+            val disp = obtenerInfoDispositivo()
+            auditoriaApi?.registrarEvento(
+                AuditoriaPayloadDto(
+                    usuario = usuario,
+                    rol = rol,
+                    accion = accion,
+                    entidad = "TRAMITE",
+                    referenciaDni = referenciaDni,
+                    detalle = detalle,
+                    canalTelemetria = canal,
+                    dispositivo = "${disp.nombrePlataforma} (${disp.modeloEquipo})"
+                )
+            )
+        }
+    }
+
+    fun autocompletarDesdePadron50k(dni: String) {
+        val limpio = dni.trim()
+        if (limpio.length != 8 || !limpio.all { it.isDigit() } || buscarCiudadanoPorDni == null) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(buscandoDniPadron = true, mensajeError = null) }
+            buscarCiudadanoPorDni.invoke(limpio).fold(
+                onSuccess = { ciudadano ->
+                    if (ciudadano != null) {
+                        _uiState.update { actual ->
+                            actual.copy(
+                                buscandoDniPadron = false,
+                                formulario = actual.formulario.copy(
+                                    dniCiudadano = ciudadano.dni,
+                                    nombreCiudadano = ciudadano.nombreCompleto,
+                                    ubigeoDestino = ciudadano.ubigeo,
+                                    dniError = null,
+                                    nombreError = null
+                                ),
+                                mensajeExito = "✓ Datos autocompletados desde Padrón Nacional (+50,000): ${ciudadano.nombreCompleto}"
+                            )
+                        }
+                    } else {
+                        _uiState.update {
+                            it.copy(
+                                buscandoDniPadron = false,
+                                mensajeError = "El DNI $limpio no existe en el Padrón (+50,000). Empadrónalo primero."
+                            )
+                        }
+                    }
+                },
+                onFailure = {
+                    _uiState.update { it.copy(buscandoDniPadron = false) }
+                }
+            )
+        }
+    }
+
     fun onFiltroBusquedaChange(texto: String) {
         _uiState.update { it.copy(filtroBusqueda = texto, mensajeExito = null) }
     }
@@ -113,7 +211,7 @@ class TramiteViewModel(
                 formulario = FormularioTramite(
                     dniCiudadano = ciudadanoPreseleccionado?.dni.orEmpty(),
                     nombreCiudadano = ciudadanoPreseleccionado?.nombreCompleto.orEmpty(),
-                    ubigeoDestino = ciudadanoPreseleccionado?.ubigeo ?: "LIMA / LURIGANCHO - AGENCIA ÑAÑA"
+                    ubigeoDestino = ciudadanoPreseleccionado?.ubigeo ?: "150118 - LIMA / LIMA / LURIGANCHO-CHOSICA"
                 ),
                 mensajeExito = null,
                 mensajeError = null
@@ -151,6 +249,7 @@ class TramiteViewModel(
     }
 
     fun actualizarFormulario(transformar: (FormularioTramite) -> FormularioTramite) {
+        val previoDni = _uiState.value.formulario.dniCiudadano
         _uiState.update {
             it.copy(
                 formulario = transformar(it.formulario),
@@ -158,12 +257,17 @@ class TramiteViewModel(
                 mensajeError = null
             )
         }
+        val nuevoDni = _uiState.value.formulario.dniCiudadano
+        if (nuevoDni != previoDni && nuevoDni.length == 8 && nuevoDni.all { it.isDigit() }) {
+            autocompletarDesdePadron50k(nuevoDni)
+        }
     }
 
-    fun guardar() {
+    fun guardar(usuarioOperador: String = "dolton", rolOperador: String = "ROLE_BRIGADISTA") {
         val actual = _uiState.value
         if (actual.guardando) return
         val form = actual.formulario
+        val eraEdicion = actual.editandoId != null
 
         viewModelScope.launch {
             _uiState.update { it.copy(guardando = true, mensajeError = null, mensajeExito = null) }
@@ -177,16 +281,25 @@ class TramiteViewModel(
                 observaciones = form.observaciones
             ).fold(
                 onSuccess = { tramite ->
-                    val accion = if (actual.editandoId == null) "registrado" else "actualizado"
+                    val accion = if (!eraEdicion) "registrado" else "actualizado"
                     _uiState.update {
                         it.copy(
                             guardando = false,
                             mostrarFormulario = false,
                             editandoId = null,
+                            tramiteVoucherActivo = tramite,
                             formulario = FormularioTramite(),
-                            mensajeExito = "Trámite DNI de ${tramite.nombreCiudadano} $accion correctamente"
+                            mensajeExito = "Trámite DNI de ${tramite.nombreCiudadano} $accion con Voucher QR emitido"
                         )
                     }
+                    registrarAuditoria(
+                        usuario = usuarioOperador,
+                        rol = rolOperador,
+                        accion = if (eraEdicion) "ACTUALIZAR_TRAMITE" else "NUEVO_TRAMITE_DNI",
+                        referenciaDni = tramite.dniCiudadano,
+                        detalle = "Trámite ${tramite.tipoTramite} (${tramite.estado}) para ${tramite.nombreCiudadano}",
+                        canal = "Google Analytics + Clarity + Píxel Meta"
+                    )
                 },
                 onFailure = { fallo ->
                     when (fallo) {
@@ -213,7 +326,12 @@ class TramiteViewModel(
         }
     }
 
-    fun cambiarEstadoRapido(tramite: TramiteDni, nuevoEstado: EstadoTramiteDni) {
+    fun cambiarEstadoRapido(
+        tramite: TramiteDni,
+        nuevoEstado: EstadoTramiteDni,
+        usuarioOperador: String = "admin",
+        rolOperador: String = "ROLE_ADMIN"
+    ) {
         viewModelScope.launch {
             guardarTramite(
                 id = tramite.id,
@@ -228,15 +346,29 @@ class TramiteViewModel(
                 _uiState.update {
                     it.copy(mensajeExito = "Estado del trámite DNI ${tramite.dniCiudadano} cambiado a ${nuevoEstado.etiqueta}")
                 }
+                registrarAuditoria(
+                    usuario = usuarioOperador,
+                    rol = rolOperador,
+                    accion = "APROBAR_TRAMITE_DNI",
+                    referenciaDni = tramite.dniCiudadano,
+                    detalle = "Cambio de estado a ${nuevoEstado.name} de ${tramite.nombreCiudadano}"
+                )
             }
         }
     }
 
-    fun eliminar(id: Long) {
+    fun eliminar(id: Long, dni: String = "", usuarioOperador: String = "admin", rolOperador: String = "ROLE_ADMIN") {
         viewModelScope.launch {
             eliminarTramite(id).fold(
                 onSuccess = {
                     _uiState.update { it.copy(mensajeExito = "Trámite DNI anulado / eliminado correctamente") }
+                    registrarAuditoria(
+                        usuario = usuarioOperador,
+                        rol = rolOperador,
+                        accion = "ANULAR_TRAMITE_DNI",
+                        referenciaDni = dni.ifBlank { id.toString() },
+                        detalle = "Anulación de trámite ID $id en Central RENIEC"
+                    )
                 },
                 onFailure = { fallo ->
                     _uiState.update { it.copy(mensajeError = fallo.message ?: "Error al eliminar trámite") }

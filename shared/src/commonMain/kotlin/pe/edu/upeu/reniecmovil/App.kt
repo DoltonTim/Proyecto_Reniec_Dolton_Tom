@@ -132,6 +132,14 @@ private fun ReniecMainScaffold(
     val ciudadanoState by ciudadanoViewModel.uiState.collectAsState()
     val tramiteState by tramiteViewModel.uiState.collectAsState()
 
+    val rolUsuario = remember(sesion) {
+        when {
+            sesion.puede("ROLE_ADMIN") -> "ROLE_ADMIN"
+            sesion.puede("ROLE_BRIGADISTA") -> "ROLE_BRIGADISTA"
+            else -> "ROLE_VERIFICADOR"
+        }
+    }
+
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
@@ -139,7 +147,6 @@ private fun ReniecMainScaffold(
                 drawerContainerColor = MaterialTheme.colorScheme.surface,
                 drawerContentColor = MaterialTheme.colorScheme.onSurface
             ) {
-                // Cabecera del Drawer con degradado púrpura/guinda y rombo tipo The Stori
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -346,12 +353,25 @@ private fun ReniecMainScaffold(
                     Screen.Inicio -> InicioScreen(
                         sesion = sesion,
                         totalCiudadanos = ciudadanoState.ciudadanos.size,
+                        totalPadronNacional = ciudadanoState.totalPadronNacional,
+                        eventosAuditoria = ciudadanoState.eventosAuditoria,
                         tramites = tramiteState.tramites,
                         avisoRed = tramiteState.avisoRed ?: ciudadanoState.avisoRed,
                         sincronizando = tramiteState.sincronizando || ciudadanoState.sincronizando,
                         onSincronizarTodo = {
                             ciudadanoViewModel.sincronizar()
                             tramiteViewModel.sincronizar()
+                        },
+                        onDispararTelemetria = { canal ->
+                            ciudadanoViewModel.registrarEventoTelemetriaOAuditoria(
+                                usuario = sesion.usuario,
+                                rol = rolUsuario,
+                                accion = "TELEMETRIA_ACTIVA",
+                                entidad = "TELEMETRIA",
+                                referenciaDni = "PADRON-50K",
+                                detalle = "Pulso de conversión y analítica enviado desde módulo Mide y Vende ($canal)",
+                                canal = canal
+                            )
                         },
                         onNavegar = { pantallaActual = it },
                         onNuevoTramite = {

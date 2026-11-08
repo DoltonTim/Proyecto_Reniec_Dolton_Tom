@@ -1,0 +1,335 @@
+{
+  "info": {
+    "_postman_id": "9deff8a2-1e10-4693-adfd-570fbae91594",
+    "name": "RENIEC Móvil UPeU - Supabase REST API (+50K Padrón, Trámites, Cargos RBAC y Auditoría)",
+    "description": "Colección oficial para probar en Postman todos los endpoints REST de RENIEC Móvil conectados a Supabase PostgreSQL.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://vktclzpkebwvfbrvtpxo.supabase.co/rest/v1",
+      "type": "string"
+    },
+    {
+      "key": "apikey",
+      "value": "sb_publishable_R4lNuJJ9kfF9LGuUlbLLgA_MkQIJQ5B",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Padrón Nacional (+50,000 Ciudadanos)",
+      "item": [
+        {
+          "name": "GET - Contar Total del Padrón Nacional (RPC +50,000)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{apikey}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/rpc/obtener_total_padron",
+              "host": ["{{baseUrl}}"],
+              "path": ["rpc", "obtener_total_padron"]
+            }
+          }
+        },
+        {
+          "name": "GET - Listar Ciudadanos (Primeros 50)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{apikey}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ciudadanos?select=*&order=id.desc&limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["ciudadanos"],
+              "query": [
+                { "key": "select", "value": "*" },
+                { "key": "order", "value": "id.desc" },
+                { "key": "limit", "value": "50" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET - Buscar Ciudadano por DNI Exacto",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{apikey}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ciudadanos?dni=eq.40025000&select=*",
+              "host": ["{{baseUrl}}"],
+              "path": ["ciudadanos"],
+              "query": [
+                { "key": "dni", "value": "eq.40025000" },
+                { "key": "select", "value": "*" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET - Buscar en los +50K por Apellido o Ubigeo (Ej. MAMANI en PUNO)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{apikey}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ciudadanos?apellido_paterno=ilike.*MAMANI*&ubigeo=ilike.*PUNO*&select=*&limit=25",
+              "host": ["{{baseUrl}}"],
+              "path": ["ciudadanos"],
+              "query": [
+                { "key": "apellido_paterno", "value": "ilike.*MAMANI*" },
+                { "key": "ubigeo", "value": "ilike.*PUNO*" },
+                { "key": "select", "value": "*" },
+                { "key": "limit", "value": "25" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST - Empadronar Nuevo Ciudadano (Con Biometría Facial y Huella)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{apikey}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Prefer", "value": "return=representation" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dni\": \"76543219\",\n  \"nombres\": \"LUIS FERNANDO\",\n  \"apellido_paterno\": \"QUISPE\",\n  \"apellido_materno\": \"CONDORI\",\n  \"fecha_nacimiento\": \"1999-08-15\",\n  \"estado_civil\": \"SOLTERO\",\n  \"ubigeo\": \"211101 - PUNO / SAN ROMAN / JULIACA\",\n  \"direccion\": \"AV. CIRCUNVALACION 840\",\n  \"donacion_organos\": true,\n  \"biometria_facial\": \"ROSTRO_CAMARA_AFIS_99.8%\",\n  \"biometria_huella\": \"HUELLA_SENSOR_INDICE_DER_OK\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ciudadanos",
+              "host": ["{{baseUrl}}"],
+              "path": ["ciudadanos"]
+            }
+          }
+        },
+        {
+          "name": "PATCH - Actualizar Biometría Facial/Huella o Domicilio de Ciudadano",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "apikey", "value": "{{apikey}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Prefer", "value": "return=representation" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"direccion\": \"JR. JAUREGUI 455 - PLAZA DE ARMAS\",\n  \"biometria_facial\": \"ACTUALIZADO_BIOFACIAL_3D_99.9%\",\n  \"biometria_huella\": \"ACTUALIZADO_HUELLA_AFIS_99.7%\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ciudadanos?dni=eq.76543219",
+              "host": ["{{baseUrl}}"],
+              "path": ["ciudadanos"],
+              "query": [
+                { "key": "dni", "value": "eq.76543219" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "DELETE - Eliminar Ciudadano por DNI",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "apikey", "value": "{{apikey}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ciudadanos?dni=eq.76543219",
+              "host": ["{{baseUrl}}"],
+              "path": ["ciudadanos"],
+              "query": [
+                { "key": "dni", "value": "eq.76543219" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Trámites DNIe y Vouchers Banco de la Nación",
+      "item": [
+        {
+          "name": "GET - Listar Todos los Trámites DNI",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{apikey}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tramites?select=*&order=id.desc",
+              "host": ["{{baseUrl}}"],
+              "path": ["tramites"],
+              "query": [
+                { "key": "select", "value": "*" },
+                { "key": "order", "value": "id.desc" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST - Registrar Nuevo Trámite DNIe",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{apikey}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Prefer", "value": "return=representation" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dni_ciudadano\": \"40025000\",\n  \"nombre_ciudadano\": \"ROSA MARIA MAMANI QUISPE\",\n  \"tipo_tramite\": \"RENOVACION\",\n  \"estado\": \"EN_PROCESO\",\n  \"ubigeo_destino\": \"211101 - PUNO / SAN ROMAN / JULIACA\",\n  \"observaciones\": \"Tributo BN 02121 pagado (S/ 30.00) - Biometría Facial y Huella verificada\",\n  \"fecha_registro\": \"2026-11-08\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tramites",
+              "host": ["{{baseUrl}}"],
+              "path": ["tramites"]
+            }
+          }
+        },
+        {
+          "name": "PATCH - Aprobar / Cambiar Estado de Trámite a ATENDIDO",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "apikey", "value": "{{apikey}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Prefer", "value": "return=representation" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"ATENDIDO\",\n  \"observaciones\": \"DNIe 3.0 entregado en ventanilla con validación de huella AFIS\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tramites?dni_ciudadano=eq.40025000",
+              "host": ["{{baseUrl}}"],
+              "path": ["tramites"],
+              "query": [
+                { "key": "dni_ciudadano", "value": "eq.40025000" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Operadores y Cargos RBAC (Administrador, Empadronador, Trámites)",
+      "item": [
+        {
+          "name": "GET - Listar Operadores y sus Cargos",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{apikey}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/operadores_reniec?select=*&order=id.asc",
+              "host": ["{{baseUrl}}"],
+              "path": ["operadores_reniec"],
+              "query": [
+                { "key": "select", "value": "*" },
+                { "key": "order", "value": "id.asc" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST - Crear Nuevo Operador (Ej. Cargo Empadronador o Trámites)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{apikey}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Prefer", "value": "return=representation" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"maria.flores\",\n  \"password\": \"123456\",\n  \"nombre_completo\": \"Lic. Maria Flores Chambi\",\n  \"cargo\": \"Empadronador de Padrón y Biometría\",\n  \"rol\": \"ROLE_EMPADRONADOR\",\n  \"sede\": \"Agencia Regional Juliaca\",\n  \"permisos\": \"ROLE_EMPADRONADOR,PADRON_LEER,PADRON_ESCRIBIR,TRAMITES_LEER\",\n  \"activo\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/operadores_reniec",
+              "host": ["{{baseUrl}}"],
+              "path": ["operadores_reniec"]
+            }
+          }
+        },
+        {
+          "name": "PATCH - Cambiar Cargo de Operador (Ej. Ascender a Administrador)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "apikey", "value": "{{apikey}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Prefer", "value": "return=representation" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cargo\": \"Administrador General RENIEC\",\n  \"rol\": \"ROLE_ADMIN\",\n  \"permisos\": \"ROLE_ADMIN,PADRON_LEER,PADRON_ESCRIBIR,PADRON_ELIMINAR,TRAMITES_LEER,TRAMITES_ESCRIBIR,TRAMITES_APROBAR,TRAMITES_ELIMINAR,RECAUDACION_VER\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/operadores_reniec?username=eq.maria.flores",
+              "host": ["{{baseUrl}}"],
+              "path": ["operadores_reniec"],
+              "query": [
+                { "key": "username", "value": "eq.maria.flores" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Telemetría (Google Analytics, Píxel Meta, Clarity) y Auditoría",
+      "item": [
+        {
+          "name": "GET - Listar Eventos de Telemetría y Auditoría",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{apikey}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auditoria_reniec?select=*&order=id.desc&limit=25",
+              "host": ["{{baseUrl}}"],
+              "path": ["auditoria_reniec"],
+              "query": [
+                { "key": "select", "value": "*" },
+                { "key": "order", "value": "id.desc" },
+                { "key": "limit", "value": "25" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST - Enviar Evento de Telemetría (Google Analytics / Meta / Clarity)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{apikey}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Prefer", "value": "return=representation" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuario\": \"admin\",\n  \"rol\": \"ROLE_ADMIN\",\n  \"accion\": \"TELEMETRIA_ACTIVA\",\n  \"entidad\": \"TELEMETRIA\",\n  \"referencia_dni\": \"PADRON-50K\",\n  \"detalle\": \"Evento disparado desde Postman para demostrar sincronización en vivo con la App Android\",\n  \"canal_telemetria\": \"Google Analytics\",\n  \"dispositivo\": \"Postman REST Client\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auditoria_reniec",
+              "host": ["{{baseUrl}}"],
+              "path": ["auditoria_reniec"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

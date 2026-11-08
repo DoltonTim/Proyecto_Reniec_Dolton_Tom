@@ -42,20 +42,26 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import pe.edu.upeu.reniecmovil.data.remote.dto.AuditoriaDto
 import pe.edu.upeu.reniecmovil.domain.model.EstadoTramiteDni
 import pe.edu.upeu.reniecmovil.domain.model.Sesion
 import pe.edu.upeu.reniecmovil.domain.model.TipoTramiteDni
 import pe.edu.upeu.reniecmovil.domain.model.TramiteDni
 import pe.edu.upeu.reniecmovil.navigation.Screen
+import pe.edu.upeu.reniecmovil.presentation.componentes.SeccionHistorialAuditoria
+import pe.edu.upeu.reniecmovil.presentation.componentes.formatearMiles
 
 @Composable
 fun InicioScreen(
     sesion: Sesion,
     totalCiudadanos: Int,
+    totalPadronNacional: Long = 50009L,
+    eventosAuditoria: List<AuditoriaDto> = emptyList(),
     tramites: List<TramiteDni>,
     avisoRed: String?,
     sincronizando: Boolean,
     onSincronizarTodo: () -> Unit,
+    onDispararTelemetria: (String) -> Unit = {},
     onNavegar: (Screen) -> Unit,
     onNuevoTramite: () -> Unit
 ) {
@@ -107,7 +113,7 @@ fun InicioScreen(
                     Column {
                         Text(
                             text = if (avisoRed == null) {
-                                "CONECTADO A CENTRAL RENIEC (ONLINE)"
+                                "CONECTADO A CENTRAL RENIEC (+50,000 EN SUPABASE)"
                             } else {
                                 "MODO BRIGADA OFFLINE (SQLDelight)"
                             },
@@ -115,7 +121,7 @@ fun InicioScreen(
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = avisoRed ?: "Sincronización bidireccional REST + JWT activa",
+                            text = avisoRed ?: "Padrón Nacional PIDE activo • Caché local: $totalCiudadanos fichas",
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
@@ -165,7 +171,7 @@ fun InicioScreen(
                         )
                     } else {
                         Text(
-                            text = "Modo Operativo: ${if (puedeRegistrarTramite) "Registro y Sincronización" else "Consulta de Padrón y Trámites DNI"}",
+                            text = "Modo Operativo: ${if (puedeRegistrarTramite) "Registro, BioFacial y Sincronización" else "Consulta de Padrón (+50K) y Trámites DNI"}",
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.secondary
@@ -190,15 +196,15 @@ fun InicioScreen(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             TarjetaMetrica(
-                titulo = "Padrón DNI",
-                valor = totalCiudadanos.toString(),
-                subtitulo = "Ciudadanos empadronados",
+                titulo = "Padrón Nacional",
+                valor = formatearMiles(totalPadronNacional),
+                subtitulo = "Ciudadanos en Supabase (+50K)",
                 modifier = Modifier.weight(1f)
             )
             TarjetaMetrica(
                 titulo = "Trámites DNI",
                 valor = tramites.size.toString(),
-                subtitulo = "Solicitudes registradas",
+                subtitulo = "Solicitudes con Voucher QR",
                 modifier = Modifier.weight(1f)
             )
         }
@@ -330,7 +336,7 @@ fun InicioScreen(
             ) {
                 Icon(Icons.Default.Badge, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.size(6.dp))
-                Text("Padrón DNIe")
+                Text("Padrón (+50K)")
             }
             if (puedeRegistrarTramite) {
                 FilledTonalButton(
@@ -344,6 +350,12 @@ fun InicioScreen(
                 }
             }
         }
+
+        // Mejora Estrella 5: Historial de Auditoría en Tiempo Real conectado a public.auditoria_reniec
+        SeccionHistorialAuditoria(
+            eventos = eventosAuditoria,
+            onRefrescar = onSincronizarTodo
+        )
 
         Text(
             text = "Actividad Reciente de Identificación",
