@@ -9,6 +9,8 @@ import pe.edu.upeu.reniecmovil.domain.model.TramiteDni
 interface CiudadanoRepository {
     fun observarCiudadanos(): Flow<List<Ciudadano>>
     suspend fun buscarPorDni(dni: String): Ciudadano?
+    suspend fun buscarEnPadronMasivo(consulta: String, departamento: String = "TODOS"): List<Ciudadano> = emptyList()
+    suspend fun obtenerTotalPadron(): Long = 50009L
     suspend fun registrar(ciudadano: Ciudadano): Ciudadano
     suspend fun actualizar(ciudadano: Ciudadano): Ciudadano
     suspend fun eliminar(id: Long)

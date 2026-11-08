@@ -8,8 +8,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -21,7 +23,9 @@ import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
@@ -47,11 +51,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import pe.edu.upeu.reniecmovil.BiometriaSesionCache
 import pe.edu.upeu.reniecmovil.domain.model.CatalogoUbigeoReniec
 import pe.edu.upeu.reniecmovil.domain.model.EstadoTramiteDni
 import pe.edu.upeu.reniecmovil.domain.model.Sesion
 import pe.edu.upeu.reniecmovil.domain.model.TipoTramiteDni
 import pe.edu.upeu.reniecmovil.domain.model.TramiteDni
+import pe.edu.upeu.reniecmovil.presentation.componentes.DialogoVerificacionBiometrica
+import pe.edu.upeu.reniecmovil.presentation.componentes.DialogoVoucherTramiteQr
+import pe.edu.upeu.reniecmovil.presentation.componentes.SelectorUbigeoDesplegableReniec
+import pe.edu.upeu.reniecmovil.presentation.componentes.TarjetaCapturaBiometricaFormulario
 
 @Composable
 fun TramiteScreen(
@@ -61,20 +70,70 @@ fun TramiteScreen(
     val state by viewModel.uiState.collectAsState()
     var tramiteParaEliminar by remember { mutableStateOf<TramiteDni?>(null) }
     var filtroDepartamento by remember { mutableStateOf("TODOS") }
+    var filtroProvincia by remember { mutableStateOf("TODAS") }
+    var filtroDistrito by remember { mutableStateOf("TODOS") }
 
     val puedeEscribirTramite = sesion.puede("TRAMITES_ESCRIBIR")
     val puedeAprobarTramite = sesion.puede("TRAMITES_APROBAR") || sesion.puede("ROLE_ADMIN")
     val puedeEliminarTramite = sesion.puede("TRAMITES_ELIMINAR") || sesion.puede("ROLE_ADMIN")
-
-    val tramitesFiltradosPorUbigeo = remember(state.tramitesFiltrados, filtroDepartamento) {
-        if (filtroDepartamento == "TODOS") {
-            state.tramitesFiltrados
-        } else {
-            state.tramitesFiltrados.filter { t ->
-                CatalogoUbigeoReniec.detectarDepartamento(t.ubigeoDestino).equals(filtroDepartamento, ignoreCase = true) ||
-                    t.ubigeoDestino.contains(filtroDepartamento, ignoreCase = true)
-            }
+    val rolUsuario = remember(sesion) {
+        when {
+            sesion.puede("ROLE_ADMIN") -> "ROLE_ADMIN"
+            sesion.puede("ROLE_BRIGADISTA") -> "ROLE_BRIGADISTA"
+            else -> "ROLE_VERIFICADOR"
         }
+    }
+
+    val tramitesFiltradosPorUbigeo = remember(state.tramitesFiltrados, filtroDepartamento, filtroProvincia, filtroDistrito) {
+        state.tramitesFiltrados.filter { t ->
+            val okDep = filtroDepartamento == "TODOS" ||
+                CatalogoUbigeoReniec.detectarDepartamento(t.ubigeoDestino).equals(filtroDepartamento, ignoreCase = true) ||
+                t.ubigeoDestino.contains(filtroDepartamento, ignoreCase = true)
+            val okProv = filtroProvincia == "TODAS" ||
+                t.ubigeoDestino.contains(filtroProvincia, ignoreCase = true)
+            val okDist = filtroDistrito == "TODOS" ||
+                t.ubigeoDestino.contains(filtroDistrito, ignoreCase = true)
+            okDep && okProv && okDist
+        }
+    }
+
+    // Mejora Estrella 3: Voucher / Constancia Oficial de Trámite con QR (Listo para Compartir)
+    state.tramiteVoucherActivo?.let { tramiteVoucher ->
+        DialogoVoucherTramiteQr(
+            tramite = tramiteVoucher,
+            onDismiss = { viewModel.abrirVoucherQr(null) },
+            onSolicitarBiometria = {
+                viewModel.abrirVoucherQr(null)
+                viewModel.abrirBiometriaTramite(tramiteVoucher)
+            },
+            onRegistrarEventoCompartir = {
+                viewModel.registrarAuditoria(
+                    usuario = sesion.usuario,
+                    rol = rolUsuario,
+                    accion = "COMPARTIR_VOUCHER_QR",
+                    referenciaDni = tramiteVoucher.dniCiudadano,
+                    detalle = "Voucher QR copiado/compartido para ${tramiteVoucher.nombreCiudadano}",
+                    canal = "Google Analytics + Píxel de Meta + Clarity"
+                )
+            }
+        )
+    }
+
+    // Mejora Estrella 4: Verificación Biométrica Facial / Huella antes de aprobar o registrar
+    state.tramiteBiometriaActivo?.let { tramiteBio ->
+        DialogoVerificacionBiometrica(
+            dni = tramiteBio.dniCiudadano,
+            nombreCiudadano = tramiteBio.nombreCiudadano,
+            onDismiss = { viewModel.abrirBiometriaTramite(null) },
+            onVerificacionExitosa = { modo, puntaje ->
+                viewModel.confirmarBiometriaYAprobar(
+                    usuario = sesion.usuario,
+                    rol = rolUsuario,
+                    modo = modo,
+                    puntaje = puntaje
+                )
+            }
+        )
     }
 
     tramiteParaEliminar?.let { tramite ->
@@ -83,13 +142,13 @@ fun TramiteScreen(
             title = { Text("Confirmar Anulación de Trámite DNI") },
             text = {
                 Text(
-                    "¿Desea anular el trámite de ${tramite.nombreCiudadano} (DNI ${tramite.dniCiudadano})? Esta acción se sincronizará con la Central RENIEC."
+                    "¿Desea anular el trámite de ${tramite.nombreCiudadano} (DNI ${tramite.dniCiudadano})? Esta acción se auditará en Central RENIEC."
                 )
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        viewModel.eliminar(tramite.id)
+                        viewModel.eliminar(tramite.id, tramite.dniCiudadano, sesion.usuario, rolUsuario)
                         tramiteParaEliminar = null
                     }
                 ) {
@@ -118,16 +177,12 @@ fun TramiteScreen(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Gestión de Trámites por Ubigeo RENIEC",
+                        text = "Trámites DNIe • Voucher QR + Rostro y Huella",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = when {
-                            puedeEliminarTramite -> "Rol Admin: Crear, Editar, Aprobar/Atender y Eliminar habilitados"
-                            puedeEscribirTramite -> "Rol Brigadista: Creación y edición Offline-First habilitadas"
-                            else -> "Módulo Consulta: Visualización de etapas del trámite por Sede"
-                        },
+                        text = "Autocompletado desde +50,000 ciudadanos y captura biométrica",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -152,45 +207,30 @@ fun TramiteScreen(
             }
         }
 
-        // Filtro por Departamento de Atención
+        // Filtro Desplegable en Cascada por Departamento, Provincia y Distrito de Atención
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.LocationOn,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Text(
-                        text = "Filtrar por Departamento / Sede Regional:",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold
-                    )
+            SelectorUbigeoDesplegableReniec(
+                tituloSeccion = "Sede Regional / Ubicación de Trámite (${tramitesFiltradosPorUbigeo.size} trámites) :",
+                etiquetaDep = "Departamento de Atención",
+                etiquetaProv = "Provincia de Atención",
+                etiquetaDist = "Distrito / Agencia",
+                departamentoActual = filtroDepartamento,
+                provinciaActual = filtroProvincia,
+                distritoActual = filtroDistrito,
+                permitirTodos = true,
+                onSeleccionarDepartamento = { dep ->
+                    filtroDepartamento = dep
+                    filtroProvincia = "TODAS"
+                    filtroDistrito = "TODOS"
+                },
+                onSeleccionarProvincia = { prov ->
+                    filtroProvincia = prov
+                    filtroDistrito = "TODOS"
+                },
+                onSeleccionarDistrito = { dist, _ ->
+                    filtroDistrito = dist
                 }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    CatalogoUbigeoReniec.departamentos.forEach { dep ->
-                        FilterChip(
-                            selected = filtroDepartamento == dep,
-                            onClick = { filtroDepartamento = dep },
-                            label = {
-                                Text(
-                                    text = if (dep == "TODOS") "TODAS LAS SEDES" else dep,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        )
-                    }
-                }
-            }
+            )
         }
 
         item {
@@ -262,8 +302,23 @@ fun TramiteScreen(
                     esEdicion = state.editandoId != null,
                     form = state.formulario,
                     guardando = state.guardando,
+                    buscandoDni = state.buscandoDniPadron,
                     onCambio = viewModel::actualizarFormulario,
-                    onGuardar = viewModel::guardar,
+                    onBuscarDni50k = { viewModel.autocompletarDesdePadron50k(state.formulario.dniCiudadano) },
+                    onAbrirEscanerModal = {
+                        viewModel.abrirBiometriaTramite(
+                            TramiteDni(
+                                id = state.editandoId ?: 0L,
+                                dniCiudadano = state.formulario.dniCiudadano.ifBlank { "TEMP" },
+                                nombreCiudadano = state.formulario.nombreCiudadano.ifBlank { "SOLICITANTE" },
+                                tipoTramite = state.formulario.tipoTramite,
+                                estado = state.formulario.estado,
+                                ubigeoDestino = state.formulario.ubigeoDestino,
+                                observaciones = state.formulario.observaciones
+                            )
+                        )
+                    },
+                    onGuardar = { viewModel.guardar(sesion.usuario, rolUsuario) },
                     onCancelar = viewModel::cerrarFormulario
                 )
             }
@@ -275,8 +330,10 @@ fun TramiteScreen(
                 puedeEditar = puedeEscribirTramite,
                 puedeAprobar = puedeAprobarTramite,
                 puedeEliminar = puedeEliminarTramite,
+                onVerVoucherQr = { viewModel.abrirVoucherQr(tramite) },
+                onValidarBiometria = { viewModel.abrirBiometriaTramite(tramite) },
                 onEditar = { viewModel.iniciarEdicion(tramite) },
-                onMarcarAtendido = { viewModel.cambiarEstadoRapido(tramite, EstadoTramiteDni.ATENDIDO) },
+                onMarcarAtendido = { viewModel.cambiarEstadoRapido(tramite, EstadoTramiteDni.ATENDIDO, sesion.usuario, rolUsuario) },
                 onEliminar = { tramiteParaEliminar = tramite }
             )
         }
@@ -289,6 +346,8 @@ private fun TarjetaTramiteItem(
     puedeEditar: Boolean,
     puedeAprobar: Boolean,
     puedeEliminar: Boolean,
+    onVerVoucherQr: () -> Unit,
+    onValidarBiometria: () -> Unit,
     onEditar: () -> Unit,
     onMarcarAtendido: () -> Unit,
     onEliminar: () -> Unit
@@ -316,7 +375,8 @@ private fun TarjetaTramiteItem(
                 Text(
                     text = "DNI ${tramite.dniCiudadano} • ${tramite.nombreCiudadano}",
                     style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
                 )
                 Surface(
                     color = if (esOffline) {
@@ -366,11 +426,25 @@ private fun TarjetaTramiteItem(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            if (puedeEditar || puedeAprobar || puedeEliminar) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
-                ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    FilledTonalButton(onClick = onVerVoucherQr) {
+                        Icon(Icons.Default.QrCode2, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Voucher QR", style = MaterialTheme.typography.labelSmall)
+                    }
+                    OutlinedButton(onClick = onValidarBiometria) {
+                        Icon(Icons.Default.Fingerprint, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Rostro/Huella", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+
+                Row {
                     if (puedeAprobar && estado != EstadoTramiteDni.ATENDIDO) {
                         IconButton(onClick = onMarcarAtendido) {
                             Icon(
@@ -445,10 +519,21 @@ private fun FormularioTramiteCard(
     esEdicion: Boolean,
     form: FormularioTramite,
     guardando: Boolean,
+    buscandoDni: Boolean,
     onCambio: ((FormularioTramite) -> FormularioTramite) -> Unit,
+    onBuscarDni50k: () -> Unit,
+    onAbrirEscanerModal: () -> Unit,
     onGuardar: () -> Unit,
     onCancelar: () -> Unit
 ) {
+    val claveDni = form.dniCiudadano.ifBlank { "TEMP" }
+    var estadoRostroLocal by remember(claveDni) {
+        mutableStateOf(BiometriaSesionCache.estadoFacialPorDni[claveDni] ?: "AFIS 99.6% Activo")
+    }
+    var estadoHuellaLocal by remember(claveDni) {
+        mutableStateOf(BiometriaSesionCache.estadoHuellaPorDni[claveDni] ?: "Índice Der. Activo")
+    }
+
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp)
@@ -458,21 +543,55 @@ private fun FormularioTramiteCard(
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Text(
-                text = if (esEdicion) "Actualizar Trámite de DNI" else "Registrar Solicitud de Trámite DNI",
+                text = if (esEdicion) "Actualizar Trámite y Biometría de DNI" else "Registrar Solicitud de Trámite DNI (+50K)",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
             )
 
-            OutlinedTextField(
-                value = form.dniCiudadano,
-                onValueChange = { v -> onCambio { it.copy(dniCiudadano = v.take(8), dniError = null) } },
-                label = { Text("DNI del Ciudadano (8 dígitos)") },
-                isError = form.dniError != null,
-                supportingText = form.dniError?.let { { Text(it) } },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
+            TarjetaCapturaBiometricaFormulario(
+                dni = form.dniCiudadano,
+                estadoFacial = estadoRostroLocal,
+                estadoHuella = estadoHuellaLocal,
+                onRostroActualizado = { resumen, _ ->
+                    estadoRostroLocal = resumen
+                    onCambio {
+                        val obsBase = it.observaciones.ifBlank { "Trámite con validación biométrica" }
+                        it.copy(observaciones = "$obsBase | Rostro: $resumen", observacionesError = null)
+                    }
+                },
+                onHuellaActualizada = { resumen ->
+                    estadoHuellaLocal = resumen
+                    onCambio {
+                        val obsBase = it.observaciones.ifBlank { "Trámite con validación biométrica" }
+                        it.copy(observaciones = "$obsBase | Huella: $resumen", observacionesError = null)
+                    }
+                },
+                onAbrirEscanerCompleto = onAbrirEscanerModal
             )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = form.dniCiudadano,
+                    onValueChange = { v -> onCambio { it.copy(dniCiudadano = v.take(8), dniError = null) } },
+                    label = { Text("DNI (ej: 40000001 al 40050000)") },
+                    isError = form.dniError != null,
+                    supportingText = form.dniError?.let { { Text(it) } },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f)
+                )
+                FilledTonalButton(
+                    onClick = onBuscarDni50k,
+                    enabled = !buscandoDni,
+                    modifier = Modifier.height(54.dp)
+                ) {
+                    Text(if (buscandoDni) "..." else "Buscar 50K")
+                }
+            }
 
             OutlinedTextField(
                 value = form.nombreCiudadano,
@@ -516,32 +635,64 @@ private fun FormularioTramiteCard(
                 }
             }
 
-            Text(
-                text = "Seleccionar Sede / Ubigeo (Dpto / Prov / Distrito):",
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                CatalogoUbigeoReniec.sedes.forEach { sede ->
-                    FilterChip(
-                        selected = form.ubigeoDestino.contains(sede.distrito, ignoreCase = true) || form.ubigeoDestino.contains(sede.codigo),
-                        onClick = {
-                            onCambio {
-                                it.copy(
-                                    ubigeoDestino = "${sede.etiquetaCompleta} (${sede.agenciaReniec})",
-                                    ubigeoError = null
-                                )
-                            }
-                        },
-                        label = { Text(sede.etiquetaCorta, style = MaterialTheme.typography.labelSmall) }
-                    )
-                }
+            var depForm by remember(form.ubigeoDestino) {
+                mutableStateOf(CatalogoUbigeoReniec.detectarDepartamento(form.ubigeoDestino))
             }
+            var provForm by remember(form.ubigeoDestino) {
+                mutableStateOf(CatalogoUbigeoReniec.detectarProvincia(form.ubigeoDestino))
+            }
+            var distForm by remember(form.ubigeoDestino) {
+                mutableStateOf(CatalogoUbigeoReniec.detectarDistrito(form.ubigeoDestino))
+            }
+
+            SelectorUbigeoDesplegableReniec(
+                tituloSeccion = "Sede / Agencia de Trámite :",
+                etiquetaDep = "Departamento de Trámite",
+                etiquetaProv = "Provincia de Trámite",
+                etiquetaDist = "Distrito / Sede",
+                departamentoActual = depForm,
+                provinciaActual = provForm,
+                distritoActual = distForm,
+                permitirTodos = false,
+                onSeleccionarDepartamento = { nuevoDep ->
+                    depForm = nuevoDep
+                    val primeraSede = CatalogoUbigeoReniec.distritosPorProvincia(nuevoDep, "TODAS").firstOrNull()
+                    if (primeraSede != null) {
+                        provForm = primeraSede.provincia
+                        distForm = primeraSede.distrito
+                        onCambio {
+                            it.copy(
+                                ubigeoDestino = "${primeraSede.etiquetaCompleta} (${primeraSede.agenciaReniec})",
+                                ubigeoError = null
+                            )
+                        }
+                    }
+                },
+                onSeleccionarProvincia = { nuevaProv ->
+                    provForm = nuevaProv
+                    val primeraSede = CatalogoUbigeoReniec.distritosPorProvincia(depForm, nuevaProv).firstOrNull()
+                    if (primeraSede != null) {
+                        distForm = primeraSede.distrito
+                        onCambio {
+                            it.copy(
+                                ubigeoDestino = "${primeraSede.etiquetaCompleta} (${primeraSede.agenciaReniec})",
+                                ubigeoError = null
+                            )
+                        }
+                    }
+                },
+                onSeleccionarDistrito = { nuevoDist, sede ->
+                    distForm = nuevoDist
+                    if (sede != null) {
+                        onCambio {
+                            it.copy(
+                                ubigeoDestino = "${sede.etiquetaCompleta} (${sede.agenciaReniec})",
+                                ubigeoError = null
+                            )
+                        }
+                    }
+                }
+            )
 
             OutlinedTextField(
                 value = form.ubigeoDestino,
@@ -571,7 +722,7 @@ private fun FormularioTramiteCard(
                     enabled = !guardando,
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text(if (esEdicion) "Actualizar Trámite" else "Registrar Trámite")
+                    Text(if (esEdicion) "Actualizar Trámite" else "Emitir con Voucher QR")
                 }
                 OutlinedButton(
                     onClick = onCancelar,

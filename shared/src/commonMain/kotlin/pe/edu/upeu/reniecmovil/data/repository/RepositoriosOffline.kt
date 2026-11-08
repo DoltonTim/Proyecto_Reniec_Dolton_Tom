@@ -30,6 +30,16 @@ class CiudadanoRepositorioOffline(
         }
     }
 
+    override suspend fun buscarEnPadronMasivo(consulta: String, departamento: String): List<Ciudadano> {
+        val resultadosRemotos = remoto.buscarEnPadronMasivo(consulta, departamento)
+        resultadosRemotos.take(30).forEach { ciudadano ->
+            local.marcarCiudadanoSincronizado(ciudadano.id, ciudadano)
+        }
+        return resultadosRemotos
+    }
+
+    override suspend fun obtenerTotalPadron(): Long = remoto.obtenerTotalPadron()
+
     override suspend fun registrar(ciudadano: Ciudadano): Ciudadano {
         val guardadoLocal = local.guardarCiudadanoPendiente(ciudadano)
         intentarSinFallar { sincronizar() }

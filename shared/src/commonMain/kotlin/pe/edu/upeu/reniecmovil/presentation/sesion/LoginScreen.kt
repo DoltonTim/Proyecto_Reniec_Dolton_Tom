@@ -74,11 +74,11 @@ fun LoginScreen(
     var codigoOtp by remember { mutableStateOf("") }
     var dialogoAyuda by remember { mutableStateOf<String?>(null) }
 
-    val colorHeaderTop = Color(0xFF8C0B42)      // Guinda-púrpura vibrante superior
-    val colorHeaderBottom = Color(0xFF640D5F)   // Púrpura institucional intenso
-    val colorDarkSurface = Color(0xFF1A0926)    // Superficie nocturna profunda (tipo The Stori)
-    val colorLimeAccent = Color(0xFFC6FF00)     // Botón neón lima de alto contraste
-    val colorTextSecondary = Color(0xFFBBA8C9)  // Lavanda grisáceo nítido para etiquetas
+    val colorHeaderTop = Color(0xFF8C0B42)
+    val colorHeaderBottom = Color(0xFF640D5F)
+    val colorDarkSurface = Color(0xFF1A0926)
+    val colorLimeAccent = Color(0xFFC6FF00)
+    val colorTextSecondary = Color(0xFFBBA8C9)
 
     Box(
         modifier = Modifier
@@ -89,7 +89,6 @@ fun LoginScreen(
                 )
             )
     ) {
-        // Fondo geométrico diagonal con pico redondeado (estilo The Stori)
         Canvas(modifier = Modifier.fillMaxSize()) {
             val w = size.width
             val h = size.height
@@ -121,7 +120,6 @@ fun LoginScreen(
         ) {
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Cabecera Superior con emblema de rombo y título al costado
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
@@ -173,7 +171,6 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(105.dp))
 
-            // Título central "Login" dentro del pico oscuro
             Text(
                 text = "Login",
                 color = Color.White,
@@ -184,7 +181,6 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(34.dp))
 
-            // Campo 1: Usuario Institucional (con línea inferior limpia)
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
                     text = "Usuario",
@@ -198,7 +194,7 @@ fun LoginScreen(
                     onValueChange = viewModel::onUsuarioChange,
                     placeholder = {
                         Text(
-                            text = "ej: usuario@reniec.gob.pe",
+                            text = "ej: admin, empadronador, tramitador, dolton",
                             color = colorTextSecondary.copy(alpha = 0.65f),
                             fontSize = 14.sp
                         )
@@ -220,7 +216,6 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Campo 2: Password + enlace "¿Olvidaste?"
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
                     text = "Password",
@@ -306,7 +301,6 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            // Botón principal lima brillante ("Login")
             Button(
                 onClick = { viewModel.iniciarSesion(onLoginExitoso) },
                 enabled = !estado.cargando,
@@ -339,7 +333,6 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(26.dp))
 
-            // Separador "— O recuperar acceso —"
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
@@ -363,7 +356,6 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // Botón único de Recuperación con Google (Supabase Auth Real)
             OutlinedButton(
                 onClick = {
                     viewModel.limpiarEstadoOtp()
@@ -403,20 +395,19 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(26.dp))
 
-            // Texto inferior de solicitud de acceso institucional
             Text(
                 text = buildAnnotatedString {
                     withStyle(SpanStyle(color = colorTextSecondary)) {
-                        append("¿No tienes cuenta activa? ")
+                        append("¿Probar cargos (Admin, Empadronador, Trámites)? ")
                     }
                     withStyle(SpanStyle(color = Color.White, fontWeight = FontWeight.ExtraBold)) {
-                        append("Solicitar acceso")
+                        append("Ver cargos")
                     }
                 },
                 fontSize = 12.5.sp,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.clickable {
-                    dialogoAyuda = "El alta de nuevos operadores y brigadistas es gestionada exclusivamente por la Jefatura Regional de Registro Civil."
+                    dialogoAyuda = "ACTIVO"
                 }
             )
         }
@@ -546,11 +537,49 @@ fun LoginScreen(
     if (dialogoAyuda != null) {
         AlertDialog(
             onDismissRequest = { dialogoAyuda = null },
-            title = { Text("Seguridad Institucional RENIEC", fontWeight = FontWeight.Bold) },
-            text = { Text(dialogoAyuda.orEmpty()) },
+            title = { Text("Cargos y Operadores RENIEC (RBAC)", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "El Administrador (@admin) puede crear nuevos usuarios y asignar cargos desde la pestaña Perfil. Toca un cargo para autocompletar:",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    listOf(
+                        Triple("admin", "Administrador General", "Control total + Crear Operadores y Asignar Cargos"),
+                        Triple("empadronador", "Empadronador de Padrón", "Registrar y editar Padrón DNI (+50K) y Biometría"),
+                        Triple("tramitador", "Gestor de Trámites DNI", "Registrar, aprobar y atender Trámites + Voucher QR"),
+                        Triple("dolton", "Brigadista Integral", "Empadronamiento y Trámites de Campo"),
+                        Triple("verificador", "Fiscalizador / Verificador", "Solo consulta de Padrón y validación biométrica")
+                    ).forEach { (usr, cargo, desc) ->
+                        Surface(
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    viewModel.onUsuarioChange(usr)
+                                    viewModel.onClaveChange("123456")
+                                    dialogoAyuda = null
+                                }
+                        ) {
+                            Column(modifier = Modifier.padding(10.dp)) {
+                                Text(
+                                    text = "$cargo (@$usr • clave: 123456)",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.ExtraBold
+                                )
+                                Text(
+                                    text = desc,
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            }
+                        }
+                    }
+                }
+            },
             confirmButton = {
                 TextButton(onClick = { dialogoAyuda = null }) {
-                    Text("Entendido", fontWeight = FontWeight.Bold)
+                    Text("Cerrar", fontWeight = FontWeight.Bold)
                 }
             }
         )

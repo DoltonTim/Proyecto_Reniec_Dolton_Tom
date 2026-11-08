@@ -9,7 +9,9 @@ import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 import pe.edu.upeu.reniecmovil.data.local.AlmacenSeguro
 import pe.edu.upeu.reniecmovil.data.local.ReniecLocalDataSource
+import pe.edu.upeu.reniecmovil.data.remote.AuditoriaApi
 import pe.edu.upeu.reniecmovil.data.remote.CiudadanoApi
+import pe.edu.upeu.reniecmovil.data.remote.OperadorApi
 import pe.edu.upeu.reniecmovil.data.remote.TramiteApi
 import pe.edu.upeu.reniecmovil.data.remote.crearHttpClient
 import pe.edu.upeu.reniecmovil.data.repository.AuthRepositorioRest
@@ -39,6 +41,8 @@ val dataModule = module {
     single<HttpClient> { crearHttpClient(get<HttpClientEngine>(), get<AlmacenSeguro>()) }
     single { CiudadanoApi(get()) }
     single { TramiteApi(get()) }
+    single { AuditoriaApi(get()) }
+    single { OperadorApi(get()) }
     single<CiudadanoRepository> { CiudadanoRepositorioOffline(get(), get()) }
     single<TramiteRepository> { TramiteRepositorioOffline(get(), get()) }
     single<AuthRepository> { AuthRepositorioRest(get(), get()) }
@@ -58,8 +62,8 @@ val domainModule = module {
 }
 
 val presentationModule = module {
-    viewModel { CiudadanoViewModel(get(), get(), get(), get(), get()) }
-    viewModel { TramiteViewModel(get(), get(), get(), get()) }
+    viewModel { CiudadanoViewModel(get(), get(), get(), get(), get(), get()) }
+    viewModel { TramiteViewModel(get(), get(), get(), get(), get(), get()) }
     viewModel { SesionViewModel(get(), get(), get()) }
 }
 
