@@ -177,35 +177,18 @@ fun LoginScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(6.dp))
 
-            Surface(
-                shape = RoundedCornerShape(22.dp),
-                color = Color(0xFF1A0B2E),
-                border = BorderStroke(2.dp, colorLimeAccent),
-                modifier = Modifier.size(148.dp)
-            ) {
-                Image(
-                    painter = painterResource(Res.drawable.mascota_reniec),
-                    contentDescription = "Mascota Oficial 3D RENIEC Móvil",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(RoundedCornerShape(22.dp))
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Text(
-                text = "Login",
-                color = Color.White,
-                fontSize = 34.sp,
-                fontWeight = FontWeight.ExtraBold,
-                letterSpacing = 0.5.sp
+            Image(
+                painter = painterResource(Res.drawable.mascota_reniec),
+                contentDescription = "Mascota Oficial 3D RENIEC Móvil",
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(235.dp)
             )
 
-            Spacer(modifier = Modifier.height(34.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
