@@ -2,6 +2,12 @@ package pe.edu.upeu.reniecmovil.presentation.sesion
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import org.jetbrains.compose.resources.painterResource
+import reniecmovil.shared.generated.resources.Res
+import reniecmovil.shared.generated.resources.mascota_reniec
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -71,6 +77,8 @@ fun LoginScreen(
     var mostrarClave by remember { mutableStateOf(false) }
     var mostrarDialogoGoogle by remember { mutableStateOf(false) }
     var correoRecuperacion by remember { mutableStateOf("doltontomsistemas@gmail.com") }
+    var telefonoRecuperacion by remember { mutableStateOf("+51930703759") }
+    var nuevaClaveRecuperacion by remember { mutableStateOf("") }
     var codigoOtp by remember { mutableStateOf("") }
     var dialogoAyuda by remember { mutableStateOf<String?>(null) }
 
@@ -169,7 +177,25 @@ fun LoginScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(105.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Surface(
+                shape = RoundedCornerShape(22.dp),
+                color = Color(0xFF1A0B2E),
+                border = BorderStroke(2.dp, colorLimeAccent),
+                modifier = Modifier.size(148.dp)
+            ) {
+                Image(
+                    painter = painterResource(Res.drawable.mascota_reniec),
+                    contentDescription = "Mascota Oficial 3D RENIEC Móvil",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(22.dp))
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             Text(
                 text = "Login",
@@ -451,8 +477,16 @@ fun LoginScreen(
                     OutlinedTextField(
                         value = correoRecuperacion,
                         onValueChange = { correoRecuperacion = it },
-                        label = { Text("Correo Google (@gmail.com)") },
+                        label = { Text("1. Correo Registrado Único (@gmail.com)") },
                         placeholder = { Text("doltontomsistemas@gmail.com") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = telefonoRecuperacion,
+                        onValueChange = { telefonoRecuperacion = it },
+                        label = { Text("2. Teléfono Celular Único (2FA)") },
+                        placeholder = { Text("+51930703759") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
