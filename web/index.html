@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Reniec MÃ³vil â€¢ Sistema Nacional de IdentificaciÃ³n (UPeU + Supabase Cloud)</title>
+  <title>Reniec Móvil • Sistema Nacional de Identificación (UPeU + Supabase Cloud)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
   <style>
@@ -58,7 +58,7 @@
 
   <script>
     // =========================================================================
-    // 1. CONFIGURACIÃ“N OFICIAL SUPABASE CLOUD (vktclzpkebwvfbrvtpxo)
+    // 1. CONFIGURACIÓN OFICIAL SUPABASE CLOUD (vktclzpkebwvfbrvtpxo)
     // =========================================================================
     const SUPABASE_URL = "https://vktclzpkebwvfbrvtpxo.supabase.co/rest/v1";
     const SUPABASE_AUTH_URL = "https://vktclzpkebwvfbrvtpxo.supabase.co/auth/v1";
@@ -70,10 +70,10 @@
     };
 
     // =========================================================================
-    // 2. CATÃLOGO OFICIAL DE UBIGEOS INEI / RENIEC
+    // 2. CATÁLOGO OFICIAL DE UBIGEOS INEI / RENIEC
     // =========================================================================
     const SEDES_UBIGEO = [
-      { codigo: "150118", departamento: "LIMA", provincia: "LIMA", distrito: "LURIGANCHO-CHOSICA", agencia: "Agencia RENIEC Ã‘aÃ±a - Carretera Central" },
+      { codigo: "150118", departamento: "LIMA", provincia: "LIMA", distrito: "LURIGANCHO-CHOSICA", agencia: "Agencia RENIEC Ñaña - Carretera Central" },
       { codigo: "150103", departamento: "LIMA", provincia: "LIMA", distrito: "ATE", agencia: "Agencia RENIEC Santa Clara - Ate" },
       { codigo: "150101", departamento: "LIMA", provincia: "LIMA", distrito: "CERCADO DE LIMA", agencia: "Sede Central RENIEC Jr. Bolivia" },
       { codigo: "211101", departamento: "PUNO", provincia: "SAN ROMAN", distrito: "JULIACA", agencia: "Agencia Regional RENIEC Juliaca" },
@@ -88,11 +88,11 @@
     const DEPARTAMENTOS = ["TODOS", ...new Set(SEDES_UBIGEO.map(s => s.departamento))];
 
     const TIPOS_TRAMITE = [
-      { id: "INSCRIPCION", etiqueta: "InscripciÃ³n por Primera Vez", costo: 16 },
-      { id: "RENOVACION", etiqueta: "RenovaciÃ³n de DNI / DNIe", costo: 41 },
+      { id: "INSCRIPCION", etiqueta: "Inscripción por Primera Vez", costo: 16 },
+      { id: "RENOVACION", etiqueta: "Renovación de DNI / DNIe", costo: 41 },
       { id: "DUPLICADO", etiqueta: "Duplicado de DNI", costo: 24 },
-      { id: "RECTIFICACION", etiqueta: "RectificaciÃ³n de Datos", costo: 24 },
-      { id: "CAMBIO_DOMICILIO", etiqueta: "ActualizaciÃ³n de Domicilio", costo: 34 }
+      { id: "RECTIFICACION", etiqueta: "Rectificación de Datos", costo: 24 },
+      { id: "CAMBIO_DOMICILIO", etiqueta: "Actualización de Domicilio", costo: 34 }
     ];
 
     const ESTADOS_TRAMITE = ["PENDIENTE", "EN_PROCESO", "OBSERVADO", "ATENDIDO"];
@@ -105,7 +105,7 @@
         clave: "Admin123!",
         usuario: "admin",
         nombreCompleto: "Ing. Carlos Mendoza (Administrador General)",
-        cargo: "Jefe de Registro Civil y SupervisiÃ³n",
+        cargo: "Jefe de Registro Civil y Supervisión",
         sede: "Sede Central RENIEC - Lima",
         permisos: ["ROLE_ADMIN", "PADRON_LEER", "PADRON_ESCRIBIR", "PADRON_ELIMINAR", "TRAMITES_LEER", "TRAMITES_ESCRIBIR", "TRAMITES_APROBAR", "TRAMITES_ELIMINAR", "RECAUDACION_VER"]
       },
@@ -114,35 +114,35 @@
         usuario: "dolton",
         nombreCompleto: "Brigadista Dolton Tom Meza Quispe",
         cargo: "Registrador de Brigada Itinerante",
-        sede: "Brigada MÃ³vil UPeU - Lurigancho Ã‘aÃ±a",
+        sede: "Brigada Móvil UPeU - Lurigancho Ñaña",
         permisos: ["ROLE_BRIGADISTA", "PADRON_LEER", "PADRON_ESCRIBIR", "TRAMITES_LEER", "TRAMITES_ESCRIBIR"]
       },
       verificador: {
         clave: "Verifica2026!",
         usuario: "verificador",
-        nombreCompleto: "Lic. Ana Torres (MÃ³dulo Consulta)",
-        cargo: "Verificador de PadrÃ³n y Ventanilla",
+        nombreCompleto: "Lic. Ana Torres (Módulo Consulta)",
+        cargo: "Verificador de Padrón y Ventanilla",
         sede: "Agencia RENIEC Ate - Vitarte",
         permisos: ["ROLE_VERIFICADOR", "PADRON_LEER", "TRAMITES_LEER"]
       }
     };
 
     const CIUDADANOS_INICIALES = [
-      { id: 1, dni: "72345678", nombres: "DOLTON TOM", apellidoPaterno: "MEZA", apellidoMaterno: "QUISPE", fechaNacimiento: "2001-05-14", estadoCivil: "SOLTERO", ubigeo: "150118 - LIMA / LIMA / LURIGANCHO-CHOSICA", direccion: "CARRETERA CENTRAL KM 19.5 VILLA UNION - Ã‘AÃ‘A", donacionOrganos: true },
+      { id: 1, dni: "72345678", nombres: "DOLTON TOM", apellidoPaterno: "MEZA", apellidoMaterno: "QUISPE", fechaNacimiento: "2001-05-14", estadoCivil: "SOLTERO", ubigeo: "150118 - LIMA / LIMA / LURIGANCHO-CHOSICA", direccion: "CARRETERA CENTRAL KM 19.5 VILLA UNION - ÑAÑA", donacionOrganos: true },
       { id: 2, dni: "45896321", nombres: "MARIA ELENA", apellidoPaterno: "PAREDES", apellidoMaterno: "MENDOZA", fechaNacimiento: "1995-08-22", estadoCivil: "CASADO", ubigeo: "120114 - JUNIN / HUANCAYO / EL TAMBO", direccion: "AV. REAL 1240 URB. SAN CARLOS", donacionOrganos: true },
-      { id: 3, dni: "70124589", nombres: "JORGE LUIS", apellidoPaterno: "HUAMAN", apellidoMaterno: "ROJAS", fechaNacimiento: "1998-11-03", estadoCivil: "SOLTERO", ubigeo: "211101 - PUNO / SAN ROMAN / JULIACA", direccion: "JR. MARIANO NUÃ‘EZ 450", donacionOrganos: false },
+      { id: 3, dni: "70124589", nombres: "JORGE LUIS", apellidoPaterno: "HUAMAN", apellidoMaterno: "ROJAS", fechaNacimiento: "1998-11-03", estadoCivil: "SOLTERO", ubigeo: "211101 - PUNO / SAN ROMAN / JULIACA", direccion: "JR. MARIANO NUÑEZ 450", donacionOrganos: false },
       { id: 4, dni: "41258796", nombres: "ROSA VICTORIA", apellidoPaterno: "CASTILLO", apellidoMaterno: "VARGAS", fechaNacimiento: "1989-02-19", estadoCivil: "SOLTERO", ubigeo: "220901 - SAN MARTIN / SAN MARTIN / TARAPOTO", direccion: "JR. JIMENEZ PIMENTEL 890", donacionOrganos: true },
       { id: 5, dni: "76543210", nombres: "CARLOS ALBERTO", apellidoPaterno: "SANCHEZ", apellidoMaterno: "GAMARRA", fechaNacimiento: "2003-07-30", estadoCivil: "SOLTERO", ubigeo: "150103 - LIMA / LIMA / ATE", direccion: "AV. NICOLAS AYLLON 3420 SANTA CLARA", donacionOrganos: true }
     ];
 
     const TRAMITES_INICIALES = [
-      { id: 1, dniCiudadano: "72345678", nombreCiudadano: "DOLTON TOM MEZA QUISPE", tipoTramite: "RENOVACION", estado: "ATENDIDO", ubigeoDestino: "150118 - LIMA / LIMA / LURIGANCHO-CHOSICA (Agencia RENIEC Ã‘aÃ±a)", observaciones: "RenovaciÃ³n a DNI ElectrÃ³nico 3.0 con firma digital activa", fechaRegistro: "2026-11-01" },
-      { id: 2, dniCiudadano: "45896321", nombreCiudadano: "MARIA ELENA PAREDES MENDOZA", tipoTramite: "CAMBIO_DOMICILIO", estado: "EN_PROCESO", ubigeoDestino: "120114 - JUNIN / HUANCAYO / EL TAMBO", observaciones: "ActualizaciÃ³n de direcciÃ³n domiciliaria con recibo verificado", fechaRegistro: "2026-11-02" },
-      { id: 3, dniCiudadano: "70124589", nombreCiudadano: "JORGE LUIS HUAMAN ROJAS", tipoTramite: "DUPLICADO", estado: "PENDIENTE", ubigeoDestino: "211101 - PUNO / SAN ROMAN / JULIACA", observaciones: "Solicitud de duplicado por pÃ©rdida en campaÃ±a itinerante", fechaRegistro: "2026-11-03" }
+      { id: 1, dniCiudadano: "72345678", nombreCiudadano: "DOLTON TOM MEZA QUISPE", tipoTramite: "RENOVACION", estado: "ATENDIDO", ubigeoDestino: "150118 - LIMA / LIMA / LURIGANCHO-CHOSICA (Agencia RENIEC Ñaña)", observaciones: "Renovación a DNI Electrónico 3.0 con firma digital activa", fechaRegistro: "2026-11-01" },
+      { id: 2, dniCiudadano: "45896321", nombreCiudadano: "MARIA ELENA PAREDES MENDOZA", tipoTramite: "CAMBIO_DOMICILIO", estado: "EN_PROCESO", ubigeoDestino: "120114 - JUNIN / HUANCAYO / EL TAMBO", observaciones: "Actualización de dirección domiciliaria con recibo verificado", fechaRegistro: "2026-11-02" },
+      { id: 3, dniCiudadano: "70124589", nombreCiudadano: "JORGE LUIS HUAMAN ROJAS", tipoTramite: "DUPLICADO", estado: "PENDIENTE", ubigeoDestino: "211101 - PUNO / SAN ROMAN / JULIACA", observaciones: "Solicitud de duplicado por pérdida en campaña itinerante", fechaRegistro: "2026-11-03" }
     ];
 
     // =========================================================================
-    // 4. ESTADO REACTIVO Y SINCRONIZACIÃ“N CON SUPABASE PostgreSQL
+    // 4. ESTADO REACTIVO Y SINCRONIZACIÓN CON SUPABASE PostgreSQL
     // =========================================================================
     const state = {
       sesion: JSON.parse(localStorage.getItem("reniec_sesion") || "null"),
@@ -268,12 +268,12 @@
           <div class="flex items-center gap-3">
             <div class="w-9 h-9 rounded-full bg-white flex items-center justify-center font-extrabold text-base text-[#EA4335] shadow">G</div>
             <div>
-              <h3 class="text-base font-extrabold text-white">RecuperaciÃ³n con Google</h3>
-              <p class="text-xs text-[#C9B6D9]">EnvÃ­o real de correo con Supabase Auth</p>
+              <h3 class="text-base font-extrabold text-white">Recuperación con Google</h3>
+              <p class="text-xs text-[#C9B6D9]">Envío real de correo con Supabase Auth</p>
             </div>
           </div>
           <p class="text-xs text-gray-200">
-            Ingresa tu cuenta de Google (@gmail.com) para que Supabase Auth te envÃ­e un correo real con tu cÃ³digo / enlace de acceso:
+            Ingresa tu cuenta de Google (@gmail.com) para que Supabase Auth te envíe un correo real con tu código / enlace de acceso:
           </p>
           <input
             id="google-recovery-email"
@@ -283,17 +283,17 @@
             class="w-full px-3.5 py-2.5 rounded-xl bg-[#160821] border border-[#3d1e57] text-xs text-white outline-none focus:border-[#C6FF00]"
           />
           <div id="google-otp-box" class="hidden space-y-2 pt-1">
-            <label class="block text-[11px] font-bold text-[#C6FF00]">Â¿Recibiste un cÃ³digo numÃ©rico de 6 dÃ­gitos en tu Gmail? IngrÃ©salo aquÃ­:</label>
+            <label class="block text-[11px] font-bold text-[#C6FF00]">¿Recibiste un código numérico de 6 dígitos en tu Gmail? Ingrésalo aquí:</label>
             <div class="flex gap-2">
               <input
                 id="google-otp-code"
                 type="text"
                 maxlength="8"
-                placeholder="CÃ³digo de 6 dÃ­gitos"
+                placeholder="Código de 6 dígitos"
                 class="flex-1 px-3.5 py-2 rounded-xl bg-[#160821] border border-[#C6FF00] text-xs text-white outline-none mono"
               />
               <button type="button" onclick="verificarCodigoGoogle()" class="px-3.5 py-2 rounded-xl bg-[#40C4FF] text-[#00263A] font-extrabold text-xs">
-                Verificar CÃ³digo
+                Verificar Código
               </button>
             </div>
           </div>
@@ -316,7 +316,7 @@
       const email = (input ? input.value : "").trim();
       msg.classList.remove("hidden");
       if (!email || !email.includes("@")) {
-        msg.textContent = "Por favor, ingresa un correo de Google vÃ¡lido.";
+        msg.textContent = "Por favor, ingresa un correo de Google válido.";
         return;
       }
       if (btn) btn.textContent = "Enviando a Gmail...";
@@ -334,17 +334,17 @@
           })
         });
         if (res.ok) {
-          msg.textContent = "âœ“ Â¡Correo real enviado por Supabase a " + email + "! Revisa tu bandeja de Gmail (o Spam) y haz clic en el enlace o escribe el cÃ³digo de 6 dÃ­gitos arriba.";
+          msg.textContent = "✓ ¡Correo real enviado por Supabase a " + email + "! Revisa tu bandeja de Gmail (o Spam) y haz clic en el enlace o escribe el código de 6 dígitos arriba.";
           if (otpBox) otpBox.classList.remove("hidden");
           if (btn) btn.textContent = "Reenviar Correo";
         } else {
           const errData = await res.json().catch(() => ({}));
-          msg.textContent = "Aviso de Supabase Auth: " + (errData.msg || errData.error_description || "Ya se enviÃ³ un correo recientemente. Espera 60 segundos o revisa tu Gmail.");
+          msg.textContent = "Aviso de Supabase Auth: " + (errData.msg || errData.error_description || "Ya se envió un correo recientemente. Espera 60 segundos o revisa tu Gmail.");
           if (otpBox) otpBox.classList.remove("hidden");
           if (btn) btn.textContent = "Reintentar";
         }
       } catch (e) {
-        msg.textContent = "Error de conexiÃ³n al contactar con Supabase Auth.";
+        msg.textContent = "Error de conexión al contactar con Supabase Auth.";
         if (btn) btn.textContent = "Enviar a mi Gmail";
       }
     }
@@ -355,7 +355,7 @@
       const msg = document.getElementById("google-recovery-msg");
       if (!token || token.length < 6) {
         msg.classList.remove("hidden");
-        msg.textContent = "Ingresa el cÃ³digo numÃ©rico de 6 dÃ­gitos enviado a tu Gmail.";
+        msg.textContent = "Ingresa el código numérico de 6 dígitos enviado a tu Gmail.";
         return;
       }
       try {
@@ -381,11 +381,11 @@
           render();
         } else {
           msg.classList.remove("hidden");
-          msg.textContent = "El cÃ³digo ingresado es incorrecto o ha expirado.";
+          msg.textContent = "El código ingresado es incorrecto o ha expirado.";
         }
       } catch (e) {
         msg.classList.remove("hidden");
-        msg.textContent = "No se pudo verificar el cÃ³digo con Supabase Auth.";
+        msg.textContent = "No se pudo verificar el código con Supabase Auth.";
       }
     }
 
@@ -398,7 +398,7 @@
       const p = state.loginClave.trim();
       const cuenta = USUARIOS_RBAC[u];
       if (!cuenta || (cuenta.clave.toLowerCase() !== p.toLowerCase() && cuenta.clave.replace("!", "").toLowerCase() !== p.toLowerCase())) {
-        state.loginError = "Credenciales invÃ¡lidas. Verifique su usuario y contraseÃ±a institucional.";
+        state.loginError = "Credenciales inválidas. Verifique su usuario y contraseña institucional.";
         render();
         return;
       }
@@ -421,11 +421,11 @@
       e.preventDefault();
       const f = state.formCiudadano;
       if (!/^\d{8}$/.test(f.dni.trim())) {
-        mostrarModal("ValidaciÃ³n de PadrÃ³n", "El nÃºmero de DNI debe tener exactamente 8 dÃ­gitos numÃ©ricos.");
+        mostrarModal("Validación de Padrón", "El número de DNI debe tener exactamente 8 dígitos numéricos.");
         return;
       }
       if (!f.nombres.trim() || !f.apellidoPaterno.trim() || !f.direccion.trim()) {
-        mostrarModal("ValidaciÃ³n de PadrÃ³n", "Complete los nombres, apellidos y direcciÃ³n domiciliaria.");
+        mostrarModal("Validación de Padrón", "Complete los nombres, apellidos y dirección domiciliaria.");
         return;
       }
       const payload = {
@@ -481,7 +481,7 @@
         tipoTramite: "RENOVACION",
         estado: "PENDIENTE",
         ubigeoDestino: c.ubigeo,
-        observaciones: "TrÃ¡mite generado desde consulta de PadrÃ³n DNIe 3.0"
+        observaciones: "Trámite generado desde consulta de Padrón DNIe 3.0"
       };
       state.editandoTramiteId = null;
       state.mostrarFormTramite = true;
@@ -493,7 +493,7 @@
       e.preventDefault();
       const f = state.formTramite;
       if (!/^\d{8}$/.test(f.dniCiudadano.trim()) || !f.nombreCiudadano.trim()) {
-        mostrarModal("ValidaciÃ³n de TrÃ¡mite", "Ingrese un DNI vÃ¡lido de 8 dÃ­gitos y el nombre del ciudadano.");
+        mostrarModal("Validación de Trámite", "Ingrese un DNI válido de 8 dígitos y el nombre del ciudadano.");
         return;
       }
       const hoy = new Date().toISOString().slice(0, 10);
@@ -550,7 +550,7 @@
     }
 
     // =========================================================================
-    // 6. VISTAS (LOGIN + DASHBOARD + PADRÃ“N + TRÃMITES + PERFIL)
+    // 6. VISTAS (LOGIN + DASHBOARD + PADRÓN + TRÁMITES + PERFIL)
     // =========================================================================
     function renderLogin() {
       return `
@@ -560,12 +560,12 @@
           <div class="relative z-10 pt-12 pb-6 px-6 flex items-center justify-center gap-5 w-full">
             <div class="w-12 h-12 rotate-45 border-2 border-white rounded-xl p-1.5 flex items-center justify-center shadow-lg">
               <div class="w-full h-full border border-[#C6FF00] rounded-md flex items-center justify-center">
-                <span class="-rotate-45 text-white text-lg">ðŸªª</span>
+                <span class="-rotate-45 text-white text-lg">🪪</span>
               </div>
             </div>
             <div>
-              <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">Reniec MÃ³vil</h1>
-              <p class="text-xs sm:text-sm text-white/85 font-medium">Red Nacional de IdentificaciÃ³n</p>
+              <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">Reniec Móvil</h1>
+              <p class="text-xs sm:text-sm text-white/85 font-medium">Red Nacional de Identificación</p>
             </div>
           </div>
 
@@ -591,15 +591,15 @@
                   type="${state.mostrarClave ? 'text' : 'password'}"
                   value="${state.loginClave}"
                   oninput="state.loginClave = this.value"
-                  placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+                  placeholder="••••••••••••"
                   class="w-full py-2.5 text-sm text-white placeholder-[#BBA8C9]/60 bg-transparent outline-none"
                   required
                 />
                 <button type="button" onclick="state.mostrarClave = !state.mostrarClave; render();" class="text-xs text-[#BBA8C9] px-2">
-                  ${state.mostrarClave ? 'ðŸ™ˆ' : 'ðŸ‘ï¸'}
+                  ${state.mostrarClave ? '🙈' : '👁️'}
                 </button>
                 <button type="button" onclick="abrirRecuperacionGoogle()" class="text-xs font-bold text-white underline whitespace-nowrap">
-                  Â¿Olvidaste?
+                  ¿Olvidaste?
                 </button>
               </div>
             </div>
@@ -626,11 +626,11 @@
               class="w-full h-11 rounded-xl border border-[#BBA8C9]/40 flex items-center justify-center gap-2.5 text-xs sm:text-sm font-bold text-white hover:bg-white/5 transition"
             >
               <span class="w-5 h-5 rounded-full bg-white text-[#EA4335] font-extrabold text-xs flex items-center justify-center shadow">G</span>
-              <span>RecuperaciÃ³n con Google</span>
+              <span>Recuperación con Google</span>
             </button>
 
             <p onclick="mostrarModal('Alta de Operadores RENIEC', 'El alta de nuevos operadores y brigadistas es gestionada exclusivamente por la Jefatura Regional de Registro Civil.')" class="text-center text-xs text-[#BBA8C9] mt-7 cursor-pointer">
-              Â¿No tienes cuenta activa? <span class="text-white font-extrabold underline">Solicitar acceso</span>
+              ¿No tienes cuenta activa? <span class="text-white font-extrabold underline">Solicitar acceso</span>
             </p>
           </form>
         </div>
@@ -653,7 +653,7 @@
         <div class="space-y-4">
           <div class="p-4 rounded-2xl bg-[#2E1647] border border-[#5d2c85] flex items-center justify-between gap-3">
             <div class="flex items-center gap-3">
-              <span class="text-2xl">âš¡</span>
+              <span class="text-2xl">⚡</span>
               <div>
                 <div class="text-xs sm:text-sm font-extrabold text-[#C6FF00]">
                   ${state.supabaseConectado ? 'CONECTADO A SUPABASE CLOUD PostgreSQL (ONLINE)' : 'SINCRONIZANDO CON SUPABASE CLOUD...'}
@@ -662,33 +662,33 @@
               </div>
             </div>
             <button onclick="sincronizarConSupabase()" class="px-3.5 py-2 rounded-xl bg-[#C6FF00] text-[#14071E] text-xs font-extrabold hover:opacity-90">
-              ${state.sincronizando ? '...' : 'ðŸ”„ Sync'}
+              ${state.sincronizando ? '...' : '🔄 Sync'}
             </button>
           </div>
 
           <div class="p-4 rounded-2xl bg-[#4B125E] flex items-center justify-between">
             <div>
               <h3 class="text-base sm:text-lg font-extrabold text-white">${s.nombreCompleto}</h3>
-              <p class="text-xs text-white/85">${s.cargo} â€¢ ${s.sede}</p>
+              <p class="text-xs text-white/85">${s.cargo} • ${s.sede}</p>
               <p class="text-xs font-extrabold mt-2 text-[#C6FF00]">
                 ${puedeVerRecaudacion
-                  ? `RecaudaciÃ³n Tasa Banco de la NaciÃ³n: S/ ${recaudacion}.00`
-                  : `Modo Operativo: ${puedeEscribirTramite ? 'Registro y SincronizaciÃ³n Activa' : 'Consulta de PadrÃ³n y TrÃ¡mites DNI'}`}
+                  ? `Recaudación Tasa Banco de la Nación: S/ ${recaudacion}.00`
+                  : `Modo Operativo: ${puedeEscribirTramite ? 'Registro y Sincronización Activa' : 'Consulta de Padrón y Trámites DNI'}`}
               </p>
             </div>
             <div class="w-11 h-11 rounded-full bg-[#C6FF00] text-[#14071E] flex items-center justify-center font-black text-lg">
-              âœ“
+              ✓
             </div>
           </div>
 
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div class="p-4 rounded-2xl bg-[#231033] border border-[#3d1e57]">
-              <div class="text-xs font-bold text-[#C6FF00]">PadrÃ³n DNI</div>
+              <div class="text-xs font-bold text-[#C6FF00]">Padrón DNI</div>
               <div class="text-2xl font-extrabold mt-1">50,009</div>
               <div class="text-xs text-[#C9B6D9]">En Supabase Cloud</div>
             </div>
             <div class="p-4 rounded-2xl bg-[#231033] border border-[#3d1e57]">
-              <div class="text-xs font-bold text-[#C6FF00]">TrÃ¡mites DNI</div>
+              <div class="text-xs font-bold text-[#C6FF00]">Trámites DNI</div>
               <div class="text-2xl font-extrabold mt-1">${totalTramites}</div>
               <div class="text-xs text-[#C9B6D9]">Solicitudes activas</div>
             </div>
@@ -706,7 +706,7 @@
 
           <div class="p-4 rounded-2xl bg-[#231033] border border-[#3d1e57] space-y-3">
             <div class="flex justify-between items-center">
-              <span class="text-sm font-bold text-white">ðŸ“Š Indicadores de Brigada RENIEC</span>
+              <span class="text-sm font-bold text-white">📊 Indicadores de Brigada RENIEC</span>
               <span class="text-xs font-bold text-[#C6FF00]">${atendidos} de ${totalTramites} (${porcentaje}%)</span>
             </div>
             <div class="w-full h-2.5 bg-[#311747] rounded-full overflow-hidden">
@@ -755,9 +755,9 @@
         <div class="space-y-4">
           <div class="flex items-center justify-between gap-2">
             <div>
-              <h2 class="text-base sm:text-lg font-extrabold">PadrÃ³n Nacional PIDE â€¢ Supabase Cloud</h2>
+              <h2 class="text-base sm:text-lg font-extrabold">Padrón Nacional PIDE • Supabase Cloud</h2>
               <p class="text-xs text-[#C6FF00]">
-                ${puedeEliminar ? 'Perfil Admin: Control total por Departamento / Provincia / Distrito' : puedeEscribir ? 'Perfil Brigadista: Empadronamiento activo (Borrado protegido)' : 'MÃ³dulo Consulta: BÃºsqueda por DNIe 3.0 y Ubigeo INEI/RENIEC'}
+                ${puedeEliminar ? 'Perfil Admin: Control total por Departamento / Provincia / Distrito' : puedeEscribir ? 'Perfil Brigadista: Empadronamiento activo (Borrado protegido)' : 'Módulo Consulta: Búsqueda por DNIe 3.0 y Ubigeo INEI/RENIEC'}
               </p>
             </div>
             ${puedeEscribir ? `
@@ -768,14 +768,14 @@
           </div>
 
           <div>
-            <div class="text-xs font-bold text-[#C9B6D9] mb-1.5">ðŸ“ Filtrar PadrÃ³n por Departamento (Ubigeo INEI/RENIEC):</div>
+            <div class="text-xs font-bold text-[#C9B6D9] mb-1.5">📍 Filtrar Padrón por Departamento (Ubigeo INEI/RENIEC):</div>
             <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
               ${DEPARTAMENTOS.map(dep => `
                 <button
                   onclick="state.filtroDepartamento = '${dep}'; render();"
                   class="px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${state.filtroDepartamento === dep ? 'bg-[#C6FF00] text-[#14071E]' : 'bg-[#231033] text-[#C9B6D9] border border-[#3d1e57]'}"
                 >
-                  ${dep === 'TODOS' ? 'TODOS (PERÃš)' : dep}
+                  ${dep === 'TODOS' ? 'TODOS (PERÚ)' : dep}
                 </button>
               `).join('')}
             </div>
@@ -786,7 +786,7 @@
               type="text"
               value="${state.filtroTexto}"
               oninput="state.filtroTexto = this.value; render();"
-              placeholder="Buscar por DNI (8 dÃ­gitos), Apellidos o Distrito..."
+              placeholder="Buscar por DNI (8 dígitos), Apellidos o Distrito..."
               class="flex-1 px-4 py-2.5 rounded-xl bg-[#231033] border border-[#3d1e57] text-sm text-white outline-none focus:border-[#C6FF00]"
             />
           </div>
@@ -795,21 +795,21 @@
             <form onsubmit="guardarCiudadano(event)" class="p-4 rounded-2xl bg-[#231033] border border-[#C6FF00]/50 space-y-3">
               <h3 class="text-sm font-extrabold text-[#C6FF00]">${state.editandoCiudadanoId ? 'Editar Ficha Ciudadana en Supabase' : 'Empadronar Nuevo Ciudadano en Supabase'}</h3>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <input type="text" maxlength="8" placeholder="DNI (8 dÃ­gitos)" value="${state.formCiudadano.dni}" oninput="state.formCiudadano.dni = this.value" class="px-3 py-2 rounded-xl bg-[#160821] border border-[#3d1e57] text-xs" required />
+                <input type="text" maxlength="8" placeholder="DNI (8 dígitos)" value="${state.formCiudadano.dni}" oninput="state.formCiudadano.dni = this.value" class="px-3 py-2 rounded-xl bg-[#160821] border border-[#3d1e57] text-xs" required />
                 <input type="text" placeholder="Nombres Completos" value="${state.formCiudadano.nombres}" oninput="state.formCiudadano.nombres = this.value.toUpperCase()" class="px-3 py-2 rounded-xl bg-[#160821] border border-[#3d1e57] text-xs" required />
                 <input type="text" placeholder="Apellido Paterno" value="${state.formCiudadano.apellidoPaterno}" oninput="state.formCiudadano.apellidoPaterno = this.value.toUpperCase()" class="px-3 py-2 rounded-xl bg-[#160821] border border-[#3d1e57] text-xs" required />
                 <input type="text" placeholder="Apellido Materno" value="${state.formCiudadano.apellidoMaterno}" oninput="state.formCiudadano.apellidoMaterno = this.value.toUpperCase()" class="px-3 py-2 rounded-xl bg-[#160821] border border-[#3d1e57] text-xs" required />
               </div>
-              <div class="text-xs font-bold text-[#C9B6D9]">Seleccionar Ubigeo RÃ¡pido (Dpto / Prov / Distrito):</div>
+              <div class="text-xs font-bold text-[#C9B6D9]">Seleccionar Ubigeo Rápido (Dpto / Prov / Distrito):</div>
               <div class="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
                 ${SEDES_UBIGEO.map(sede => `
                   <button type="button" onclick="state.formCiudadano.ubigeo = '${sede.codigo} - ${sede.departamento} / ${sede.provincia} / ${sede.distrito}'; render();" class="px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap ${state.formCiudadano.ubigeo.includes(sede.codigo) ? 'bg-[#C6FF00] text-[#14071E]' : 'bg-[#311747] text-white'}">
-                    ${sede.departamento} â€¢ ${sede.distrito} (${sede.codigo})
+                    ${sede.departamento} • ${sede.distrito} (${sede.codigo})
                   </button>
                 `).join('')}
               </div>
               <input type="text" placeholder="Ubigeo Oficial" value="${state.formCiudadano.ubigeo}" oninput="state.formCiudadano.ubigeo = this.value" class="w-full px-3 py-2 rounded-xl bg-[#160821] border border-[#3d1e57] text-xs" required />
-              <input type="text" placeholder="DirecciÃ³n Domiciliaria Actual" value="${state.formCiudadano.direccion}" oninput="state.formCiudadano.direccion = this.value.toUpperCase()" class="w-full px-3 py-2 rounded-xl bg-[#160821] border border-[#3d1e57] text-xs" required />
+              <input type="text" placeholder="Dirección Domiciliaria Actual" value="${state.formCiudadano.direccion}" oninput="state.formCiudadano.direccion = this.value.toUpperCase()" class="w-full px-3 py-2 rounded-xl bg-[#160821] border border-[#3d1e57] text-xs" required />
               <div class="flex gap-2">
                 <button type="submit" class="flex-1 py-2 rounded-xl bg-[#C6FF00] text-[#14071E] font-extrabold text-xs">Guardar en Supabase Cloud</button>
                 <button type="button" onclick="state.mostrarFormCiudadano = false; render();" class="flex-1 py-2 rounded-xl border border-[#C9B6D9]/40 text-xs font-bold">Cancelar</button>
@@ -821,9 +821,9 @@
             <div onclick="state.dniReverso = !state.dniReverso; render();" class="p-4 rounded-2xl bg-gradient-to-br from-[#4B125E] to-[#2c0b3a] border border-[#C6FF00]/40 shadow-xl cursor-pointer transition">
               <div class="flex justify-between items-center border-b border-white/15 pb-2.5 mb-3">
                 <div>
-                  <div class="text-[11px] font-extrabold text-[#C6FF00]">REPÃšBLICA DEL PERÃš â€¢ RENIEC</div>
+                  <div class="text-[11px] font-extrabold text-[#C6FF00]">REPÚBLICA DEL PERÚ • RENIEC</div>
                   <div class="text-[11px] font-bold text-white">
-                    ${!state.dniReverso ? 'DOCUMENTO NACIONAL DE IDENTIDAD ELECTRÃ“NICO (ANVERSO)' : 'DNIe 3.0 â€¢ DATOS DE UBIGEO Y ZONA MRZ (REVERSO)'}
+                    ${!state.dniReverso ? 'DOCUMENTO NACIONAL DE IDENTIDAD ELECTRÓNICO (ANVERSO)' : 'DNIe 3.0 • DATOS DE UBIGEO Y ZONA MRZ (REVERSO)'}
                   </div>
                 </div>
                 <span class="px-2.5 py-1 rounded-lg bg-[#C6FF00] text-[#14071E] font-extrabold text-xs">
@@ -834,8 +834,8 @@
               ${!state.dniReverso ? `
                 <div class="flex items-center gap-4">
                   <div class="flex flex-col items-center gap-1.5">
-                    <div class="w-16 h-16 rounded-xl bg-[#231033] border border-[#C6FF00]/40 flex items-center justify-center text-3xl">ðŸ‘¤</div>
-                    <span class="px-2 py-0.5 rounded bg-amber-500/20 text-[#C6FF00] text-[10px] font-extrabold">âš¡ CHIP NFC</span>
+                    <div class="w-16 h-16 rounded-xl bg-[#231033] border border-[#C6FF00]/40 flex items-center justify-center text-3xl">👤</div>
+                    <span class="px-2 py-0.5 rounded bg-amber-500/20 text-[#C6FF00] text-[10px] font-extrabold">⚡ CHIP NFC</span>
                   </div>
                   <div class="text-xs space-y-1 flex-1">
                     <div><b>PRIMER APELLIDO:</b> ${seleccionado.apellidoPaterno}</div>
@@ -852,10 +852,10 @@
                       <div><b>DOMICILIO:</b> ${seleccionado.direccion}</div>
                       <div><b>DPTO / PROV / DIST:</b> ${seleccionado.ubigeo}</div>
                       <div class="text-[#C6FF00] font-bold">SEDE RENIEC: ${ubSel.agencia}</div>
-                      <div class="text-[#40C4FF] font-bold">DONACIÃ“N DE Ã“RGANOS: ${seleccionado.donacionOrganos ? 'SÃ AUTORIZA' : 'NO ESPECIFICA'}</div>
+                      <div class="text-[#40C4FF] font-bold">DONACIÓN DE ÓRGANOS: ${seleccionado.donacionOrganos ? 'SÍ AUTORIZA' : 'NO ESPECIFICA'}</div>
                     </div>
                     <div class="p-2.5 rounded-xl bg-white text-black font-mono text-[10px] font-black leading-tight text-center">
-                      â–£â–¤â–¥<br/>â–¤QRâ–¤<br/>â–¥â–¤â–£
+                      ▣▤▥<br/>▤QR▤<br/>▥▤▣
                     </div>
                   </div>
                   <div class="p-2.5 rounded-xl bg-[#160821] mono text-[11px] text-[#C6FF00] leading-snug">
@@ -867,16 +867,16 @@
               `}
 
               <div class="mt-3 pt-2 border-t border-white/10 flex flex-wrap items-center justify-between gap-2">
-                <span class="text-[11px] text-[#C6FF00] font-semibold">ðŸ”„ Toca la tarjeta para girar el DNIe 3.0 (Anverso / Reverso MRZ)</span>
+                <span class="text-[11px] text-[#C6FF00] font-semibold">🔄 Toca la tarjeta para girar el DNIe 3.0 (Anverso / Reverso MRZ)</span>
                 <div class="flex gap-2" onclick="event.stopPropagation();">
-                  ${puedeTramite ? `<button onclick="iniciarTramiteDesdeCiudadano(${seleccionado.id})" class="px-3 py-1 rounded-lg bg-[#C6FF00] text-[#14071E] font-extrabold text-xs">+ Iniciar TrÃ¡mite</button>` : ''}
+                  ${puedeTramite ? `<button onclick="iniciarTramiteDesdeCiudadano(${seleccionado.id})" class="px-3 py-1 rounded-lg bg-[#C6FF00] text-[#14071E] font-extrabold text-xs">+ Iniciar Trámite</button>` : ''}
                 </div>
               </div>
             </div>
           ` : ''}
 
           <div class="text-xs font-bold text-[#C9B6D9]">
-            Ciudadanos en ${state.filtroDepartamento === 'TODOS' ? 'Todo el PerÃº' : state.filtroDepartamento} (${filtrados.length})
+            Ciudadanos en ${state.filtroDepartamento === 'TODOS' ? 'Todo el Perú' : state.filtroDepartamento} (${filtrados.length})
           </div>
           <div class="space-y-2.5">
             ${filtrados.map(c => {
@@ -884,13 +884,13 @@
               return `
                 <div onclick="state.ciudadanoSeleccionadoId = ${c.id}; render();" class="p-3.5 rounded-2xl bg-[#231033] hover:bg-[#311747] border ${seleccionado && seleccionado.id === c.id ? 'border-[#C6FF00]' : 'border-[#3d1e57]'} flex items-center justify-between gap-2 cursor-pointer transition">
                   <div>
-                    <div class="text-sm font-extrabold text-white">DNI: ${c.dni} â€¢ ${c.nombres} ${c.apellidoPaterno} ${c.apellidoMaterno}</div>
+                    <div class="text-sm font-extrabold text-white">DNI: ${c.dni} • ${c.nombres} ${c.apellidoPaterno} ${c.apellidoMaterno}</div>
                     <div class="text-xs text-[#C6FF00] font-semibold">Ubigeo ${ub.codigo}: ${c.ubigeo}</div>
                     <div class="text-[11px] text-[#C9B6D9]">Domicilio: ${c.direccion} | Nac: ${c.fechaNacimiento}</div>
                   </div>
                   <div class="flex items-center gap-1" onclick="event.stopPropagation();">
-                    ${puedeEscribir ? `<button onclick="state.editandoCiudadanoId = ${c.id}; state.formCiudadano = {...state.ciudadanos.find(x=>x.id===${c.id})}; state.mostrarFormCiudadano = true; render();" title="Editar" class="p-2 rounded-lg hover:bg-white/10">âœï¸</button>` : ''}
-                    ${puedeEliminar ? `<button onclick="eliminarCiudadano(${c.id})" title="Eliminar" class="p-2 rounded-lg hover:bg-white/10 text-[#FF5252]">ðŸ—‘ï¸</button>` : puedeEscribir ? `<span title="Borrado protegido en Brigada" class="p-2 opacity-50">ðŸ”’</span>` : ''}
+                    ${puedeEscribir ? `<button onclick="state.editandoCiudadanoId = ${c.id}; state.formCiudadano = {...state.ciudadanos.find(x=>x.id===${c.id})}; state.mostrarFormCiudadano = true; render();" title="Editar" class="p-2 rounded-lg hover:bg-white/10">✏️</button>` : ''}
+                    ${puedeEliminar ? `<button onclick="eliminarCiudadano(${c.id})" title="Eliminar" class="p-2 rounded-lg hover:bg-white/10 text-[#FF5252]">🗑️</button>` : puedeEscribir ? `<span title="Borrado protegido en Brigada" class="p-2 opacity-50">🔒</span>` : ''}
                   </div>
                 </div>
               `;
@@ -918,14 +918,14 @@
         <div class="space-y-4">
           <div class="flex items-center justify-between gap-2">
             <div>
-              <h2 class="text-base sm:text-lg font-extrabold">GestiÃ³n de TrÃ¡mites por Ubigeo â€¢ Supabase Cloud</h2>
+              <h2 class="text-base sm:text-lg font-extrabold">Gestión de Trámites por Ubigeo • Supabase Cloud</h2>
               <p class="text-xs text-[#C6FF00]">
-                ${puedeEliminar ? 'Rol Admin: Crear, Editar, Aprobar/Atender y Eliminar habilitados' : puedeEscribir ? 'Rol Brigadista: CreaciÃ³n y ediciÃ³n Offline-First habilitadas' : 'MÃ³dulo Consulta: VisualizaciÃ³n de etapas del trÃ¡mite por Sede'}
+                ${puedeEliminar ? 'Rol Admin: Crear, Editar, Aprobar/Atender y Eliminar habilitados' : puedeEscribir ? 'Rol Brigadista: Creación y edición Offline-First habilitadas' : 'Módulo Consulta: Visualización de etapas del trámite por Sede'}
               </p>
             </div>
             ${puedeEscribir ? `
               <button onclick="state.mostrarFormTramite = !state.mostrarFormTramite; state.editandoTramiteId = null; render();" class="px-4 py-2 rounded-xl bg-[#C6FF00] text-[#14071E] font-extrabold text-xs">
-                + Nuevo TrÃ¡mite
+                + Nuevo Trámite
               </button>
             ` : ''}
           </div>
@@ -954,9 +954,9 @@
 
           ${state.mostrarFormTramite && puedeEscribir ? `
             <form onsubmit="guardarTramite(event)" class="p-4 rounded-2xl bg-[#231033] border border-[#C6FF00]/50 space-y-3">
-              <h3 class="text-sm font-extrabold text-[#C6FF00]">${state.editandoTramiteId ? 'Actualizar TrÃ¡mite DNI en Supabase' : 'Registrar Solicitud de TrÃ¡mite DNI en Supabase'}</h3>
+              <h3 class="text-sm font-extrabold text-[#C6FF00]">${state.editandoTramiteId ? 'Actualizar Trámite DNI en Supabase' : 'Registrar Solicitud de Trámite DNI en Supabase'}</h3>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <input type="text" maxlength="8" placeholder="DNI del Ciudadano (8 dÃ­gitos)" value="${state.formTramite.dniCiudadano}" oninput="state.formTramite.dniCiudadano = this.value" class="px-3 py-2 rounded-xl bg-[#160821] border border-[#3d1e57] text-xs" required />
+                <input type="text" maxlength="8" placeholder="DNI del Ciudadano (8 dígitos)" value="${state.formTramite.dniCiudadano}" oninput="state.formTramite.dniCiudadano = this.value" class="px-3 py-2 rounded-xl bg-[#160821] border border-[#3d1e57] text-xs" required />
                 <input type="text" placeholder="Apellidos y Nombres" value="${state.formTramite.nombreCiudadano}" oninput="state.formTramite.nombreCiudadano = this.value.toUpperCase()" class="px-3 py-2 rounded-xl bg-[#160821] border border-[#3d1e57] text-xs" required />
               </div>
               <div class="flex gap-1.5 overflow-x-auto no-scrollbar">
@@ -969,7 +969,7 @@
               <div class="flex gap-1.5 overflow-x-auto no-scrollbar">
                 ${SEDES_UBIGEO.map(sede => `
                   <button type="button" onclick="state.formTramite.ubigeoDestino = '${sede.codigo} - ${sede.departamento} / ${sede.provincia} / ${sede.distrito} (${sede.agencia})'; render();" class="px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap ${state.formTramite.ubigeoDestino.includes(sede.codigo) ? 'bg-[#40C4FF] text-[#00263A]' : 'bg-[#311747] text-white'}">
-                    ${sede.departamento} â€¢ ${sede.distrito}
+                    ${sede.departamento} • ${sede.distrito}
                   </button>
                 `).join('')}
               </div>
@@ -989,8 +989,8 @@
               return `
                 <div class="p-4 rounded-2xl bg-[#231033] border border-[#3d1e57] space-y-2.5">
                   <div class="flex justify-between items-center">
-                    <div class="text-sm font-extrabold">DNI ${t.dniCiudadano} â€¢ ${t.nombreCiudadano}</div>
-                    <span class="px-2.5 py-0.5 rounded-lg bg-[#2E1647] text-[#C6FF00] text-[11px] font-bold">âš¡ Supabase Cloud</span>
+                    <div class="text-sm font-extrabold">DNI ${t.dniCiudadano} • ${t.nombreCiudadano}</div>
+                    <span class="px-2.5 py-0.5 rounded-lg bg-[#2E1647] text-[#C6FF00] text-[11px] font-bold">⚡ Supabase Cloud</span>
                   </div>
                   <div class="text-xs text-[#C6FF00] font-semibold">
                     Tipo: ${tipo.etiqueta} (Tasa S/ ${tipo.costo}.00) | Estado: ${t.estado}
@@ -1001,10 +1001,10 @@
                     <div class="py-1 rounded-md ${nivel >= 3 ? 'bg-[#C6FF00] text-[#14071E]' : 'bg-[#311747] text-gray-400'}">3. Entregado</div>
                   </div>
                   <div class="text-xs font-semibold">Ubigeo (${ub.codigo}): ${t.ubigeoDestino} | Fecha: ${t.fechaRegistro}</div>
-                  <div class="text-xs text-[#C9B6D9]">ObservaciÃ³n: ${t.observaciones}</div>
+                  <div class="text-xs text-[#C9B6D9]">Observación: ${t.observaciones}</div>
                   <div class="flex justify-end gap-2 pt-1">
-                    ${puedeAprobar && t.estado !== "ATENDIDO" ? `<button onclick="aprobarTramite(${t.id})" class="px-3 py-1 rounded-lg bg-[#40C4FF] text-[#00263A] font-extrabold text-xs">âœ“ Aprobar Entrega</button>` : ''}
-                    ${puedeEliminar ? `<button onclick="eliminarTramite(${t.id})" class="px-3 py-1 rounded-lg bg-[#5C1127] text-[#FFCDD2] font-bold text-xs">ðŸ—‘ï¸ Anular</button>` : ''}
+                    ${puedeAprobar && t.estado !== "ATENDIDO" ? `<button onclick="aprobarTramite(${t.id})" class="px-3 py-1 rounded-lg bg-[#40C4FF] text-[#00263A] font-extrabold text-xs">✓ Aprobar Entrega</button>` : ''}
+                    ${puedeEliminar ? `<button onclick="eliminarTramite(${t.id})" class="px-3 py-1 rounded-lg bg-[#5C1127] text-[#FFCDD2] font-bold text-xs">🗑️ Anular</button>` : ''}
                   </div>
                 </div>
               `;
@@ -1019,7 +1019,7 @@
       return `
         <div class="space-y-4">
           <div class="p-5 rounded-2xl bg-[#231033] border border-[#3d1e57] space-y-2.5">
-            <h3 class="text-base font-extrabold text-[#C6FF00]">ðŸ›¡ï¸ Credencial Digital del Registrador (JWT)</h3>
+            <h3 class="text-base font-extrabold text-[#C6FF00]">🛡️ Credencial Digital del Registrador (JWT)</h3>
             <hr class="border-[#3d1e57]" />
             <p class="text-sm font-bold">Operador: ${s.nombreCompleto}</p>
             <p class="text-xs text-[#C9B6D9]">Usuario: @${s.usuario}</p>
@@ -1031,15 +1031,15 @@
           </div>
 
           <div class="p-5 rounded-2xl bg-[#231033] border border-[#3d1e57] space-y-2">
-            <h3 class="text-base font-extrabold text-[#40C4FF]">â˜ï¸ Arquitectura HÃ­brida Supabase + Cloudflare + Android KMP</h3>
-            <p class="text-xs text-[#C9B6D9]">â€¢ Endpoint Supabase: <span class="mono text-[#C6FF00]">vktclzpkebwvfbrvtpxo.supabase.co</span></p>
-            <p class="text-xs text-[#C9B6D9]">â€¢ Plataforma Web: Cloudflare Pages Edge CDN</p>
-            <p class="text-xs text-[#C9B6D9]">â€¢ App MÃ³vil: Kotlin Multiplatform + Compose Multiplatform + SQLDelight Offline</p>
-            <p class="text-xs text-[#C6FF00] font-bold">â€¢ SincronizaciÃ³n bidireccional en vivo entre tu celular y la web</p>
+            <h3 class="text-base font-extrabold text-[#40C4FF]">☁️ Arquitectura Híbrida Supabase + Cloudflare + Android KMP</h3>
+            <p class="text-xs text-[#C9B6D9]">• Endpoint Supabase: <span class="mono text-[#C6FF00]">vktclzpkebwvfbrvtpxo.supabase.co</span></p>
+            <p class="text-xs text-[#C9B6D9]">• Plataforma Web: Cloudflare Pages Edge CDN</p>
+            <p class="text-xs text-[#C9B6D9]">• App Móvil: Kotlin Multiplatform + Compose Multiplatform + SQLDelight Offline</p>
+            <p class="text-xs text-[#C6FF00] font-bold">• Sincronización bidireccional en vivo entre tu celular y la web</p>
           </div>
 
           <button onclick="cerrarSesion()" class="w-full py-3.5 rounded-xl bg-[#FF5252] text-white font-extrabold text-sm shadow-lg">
-            ðŸšª Cerrar SesiÃ³n Segura (Borrar JWT)
+            🚪 Cerrar Sesión Segura (Borrar JWT)
           </button>
         </div>
       `;
@@ -1047,15 +1047,15 @@
 
     function renderMainScaffold() {
       const s = state.sesion;
-      const titulos = { inicio: "Inicio", padron: "PadrÃ³n DNI", tramites: "TrÃ¡mites", perfil: "Perfil" };
+      const titulos = { inicio: "Inicio", padron: "Padrón DNI", tramites: "Trámites", perfil: "Perfil" };
       return `
         <header class="topbar-gradient px-5 py-3.5 flex items-center justify-between shadow-md">
           <div class="flex items-center gap-3">
             <div class="w-7 h-7 rotate-45 border-2 border-[#C6FF00] rounded-md flex items-center justify-center">
-              <span class="-rotate-45 text-xs">ðŸªª</span>
+              <span class="-rotate-45 text-xs">🪪</span>
             </div>
             <span class="font-extrabold text-sm sm:text-base tracking-wide text-white">
-              ${titulos[state.tabActual]} â€¢ ${s.usuario.toUpperCase()}
+              ${titulos[state.tabActual]} • ${s.usuario.toUpperCase()}
             </span>
           </div>
           <button onclick="cerrarSesion()" class="text-xs font-bold px-3 py-1.5 rounded-lg bg-black/25 text-[#C6FF00] hover:bg-black/40">
@@ -1072,10 +1072,10 @@
 
         <nav class="bg-[#231033] border-t border-[#3d1e57] px-3 py-2 grid grid-cols-4 gap-2">
           ${[
-            { id: "inicio", label: "Inicio", icon: "ðŸ " },
-            { id: "padron", label: "PadrÃ³n DNI", icon: "ðŸªª" },
-            { id: "tramites", label: "TrÃ¡mites", icon: "ðŸ“‹" },
-            { id: "perfil", label: "Perfil", icon: "ðŸ‘¤" }
+            { id: "inicio", label: "Inicio", icon: "🏠" },
+            { id: "padron", label: "Padrón DNI", icon: "🪪" },
+            { id: "tramites", label: "Trámites", icon: "📋" },
+            { id: "perfil", label: "Perfil", icon: "👤" }
           ].map(item => `
             <button
               onclick="state.tabActual = '${item.id}'; render();"
@@ -1101,6 +1101,9 @@
       };
       guardarStorage();
       window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (state.sesion && state.sesion.usuario && USUARIOS_RBAC[state.sesion.usuario]) {
+      state.sesion = { ...USUARIOS_RBAC[state.sesion.usuario] };
+      guardarStorage();
     }
 
     render();
@@ -1108,4 +1111,3 @@
   </script>
 </body>
 </html>
-
