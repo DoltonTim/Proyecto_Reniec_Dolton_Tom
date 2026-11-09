@@ -474,6 +474,8 @@ fun PerfilScreen(
     if (mostrarDialogoNuevo) {
         var username by remember { mutableStateOf("") }
         var password by remember { mutableStateOf("123456") }
+        var email by remember { mutableStateOf("") }
+        var telefono by remember { mutableStateOf("+519") }
         var nombreCompleto by remember { mutableStateOf("") }
         var sede by remember { mutableStateOf("Agencia Regional Juliaca") }
         var cargoSeleccionado by remember { mutableStateOf(CargoOperadorReniec.EMPADRONADOR) }
@@ -504,6 +506,22 @@ fun PerfilScreen(
                         value = password,
                         onValueChange = { password = it },
                         label = { Text("Contraseña de acceso") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = email,
+                        onValueChange = { email = it.trim().lowercase() },
+                        label = { Text("Correo Google (@gmail.com o @reniec)") },
+                        placeholder = { Text("ej: usuario@gmail.com") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = telefono,
+                        onValueChange = { telefono = it.trim() },
+                        label = { Text("Celular para Recuperación (2FA)") },
+                        placeholder = { Text("+51987654321") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -548,7 +566,7 @@ fun PerfilScreen(
             },
             confirmButton = {
                 Button(
-                    enabled = !guardando && username.isNotBlank() && nombreCompleto.isNotBlank(),
+                    enabled = !guardando && username.isNotBlank() && nombreCompleto.isNotBlank() && email.contains("@"),
                     onClick = {
                         guardando = true
                         scope.launch {
@@ -556,6 +574,8 @@ fun PerfilScreen(
                                 username = username,
                                 password = password.ifBlank { "123456" },
                                 nombreCompleto = nombreCompleto,
+                                email = email.ifBlank { null },
+                                telefono = telefono.ifBlank { null },
                                 cargo = cargoSeleccionado.etiquetaCargo,
                                 rol = cargoSeleccionado.codigoRol,
                                 sede = sede.ifBlank { "Agencia Regional Juliaca" },

@@ -254,6 +254,8 @@ data class OperadorReniecDto(
     val id: Long = 0L,
     val username: String,
     val password: String = "",
+    val email: String? = null,
+    val telefono: String? = null,
     @SerialName("nombre_completo")
     val nombreCompleto: String,
     val cargo: String,
@@ -276,6 +278,8 @@ data class OperadorReniecDto(
 data class OperadorReniecPayloadDto(
     val username: String,
     val password: String,
+    val email: String? = null,
+    val telefono: String? = null,
     @SerialName("nombre_completo")
     val nombreCompleto: String,
     val cargo: String,
