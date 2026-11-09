@@ -186,7 +186,7 @@ open class OperadorApi(
 ) {
     open suspend fun listarOperadores(): List<OperadorReniecDto> = try {
         ejecutarLlamadaRemota {
-            client.get("operadores_reniec?select=*&order=id.asc")
+            client.get("operadores_reniec?activo=eq.true&select=*&order=id.asc")
                 .body<List<OperadorReniecDto>>()
         }
     } catch (_: Exception) {
@@ -219,8 +219,19 @@ open class OperadorApi(
         null
     }
 
+    @Serializable
+    private data class BajaOperadorDto(val activo: Boolean = false)
+
     open suspend fun eliminarOperador(id: Long) = ejecutarLlamadaRemota {
-        client.delete("operadores_reniec?id=eq.$id")
+        // En lugar de DELETE físico que rompería la auditoría histórica de RENIEC,
+        // realiza baja lógica (activo = false) para revocar acceso inmediato preservando reportes
+        try {
+            client.delete("operadores_reniec?id=eq.$id")
+        } catch (_: Exception) {
+            client.patch("operadores_reniec?id=eq.$id") {
+                setBody(BajaOperadorDto(activo = false))
+            }
+        }
         Unit
     }
 }

@@ -340,10 +340,11 @@ fun PerfilScreen(
                                                 IconButton(
                                                     onClick = {
                                                         scope.launch {
+                                                            operadores = operadores.filter { it.id != op.id }
                                                             runCatching {
                                                                 operadorApi.eliminarOperador(op.id)
                                                             }
-                                                            mensajeGestion = "✓ Operador @${op.username} eliminado de Supabase"
+                                                            mensajeGestion = "✓ Acceso de @${op.username} revocado. Su historial permanece en Reportes."
                                                             recargarOperadores()
                                                         }
                                                     },
@@ -351,7 +352,7 @@ fun PerfilScreen(
                                                 ) {
                                                     Icon(
                                                         imageVector = Icons.Default.Delete,
-                                                        contentDescription = "Eliminar",
+                                                        contentDescription = "Dar de Baja / Eliminar",
                                                         tint = MaterialTheme.colorScheme.error,
                                                         modifier = Modifier.size(18.dp)
                                                     )
