@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Badge
+import androidx.compose.material.icons.automirrored.filled.ListAlt
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LightMode
@@ -66,6 +67,7 @@ import pe.edu.upeu.reniecmovil.presentation.ciudadano.CiudadanoScreen
 import pe.edu.upeu.reniecmovil.presentation.ciudadano.CiudadanoViewModel
 import pe.edu.upeu.reniecmovil.presentation.inicio.InicioScreen
 import pe.edu.upeu.reniecmovil.presentation.perfil.PerfilScreen
+import pe.edu.upeu.reniecmovil.presentation.reportes.ReportesScreen
 import pe.edu.upeu.reniecmovil.presentation.sesion.LoginScreen
 import pe.edu.upeu.reniecmovil.presentation.sesion.SesionViewModel
 import pe.edu.upeu.reniecmovil.presentation.tramite.TramiteScreen
@@ -118,6 +120,7 @@ private fun ReniecMainScaffold(
             DestinoNav(Screen.Inicio, "Inicio", Icons.Default.Home),
             DestinoNav(Screen.PadronDni, "Padrón DNI", Icons.Default.Badge),
             DestinoNav(Screen.Tramites, "Trámites", Icons.AutoMirrored.Filled.Assignment),
+            DestinoNav(Screen.Reportes, "Reportes", Icons.AutoMirrored.Filled.ListAlt),
             DestinoNav(Screen.Perfil, "Perfil", Icons.Default.Person)
         )
     }
@@ -391,6 +394,7 @@ private fun ReniecMainScaffold(
                         viewModel = tramiteViewModel,
                         sesion = sesion
                     )
+                    Screen.Reportes -> ReportesScreen(sesion = sesion, onVolver = { pantallaActual = Screen.Inicio })
                     Screen.Perfil -> PerfilScreen(
                         sesion = sesion,
                         darkTheme = darkTheme,
