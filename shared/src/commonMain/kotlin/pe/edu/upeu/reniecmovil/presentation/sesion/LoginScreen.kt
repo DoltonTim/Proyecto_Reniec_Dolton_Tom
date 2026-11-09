@@ -80,7 +80,6 @@ fun LoginScreen(
     var telefonoRecuperacion by remember { mutableStateOf("+51930703759") }
     var nuevaClaveRecuperacion by remember { mutableStateOf("") }
     var codigoOtp by remember { mutableStateOf("") }
-    var dialogoAyuda by remember { mutableStateOf<String?>(null) }
 
     val colorHeaderTop = Color(0xFF8C0B42)
     val colorHeaderBottom = Color(0xFF640D5F)
@@ -203,7 +202,7 @@ fun LoginScreen(
                     onValueChange = viewModel::onUsuarioChange,
                     placeholder = {
                         Text(
-                            text = "ej: admin, empadronador, tramitador, dolton",
+                            text = "Usuario institucional o DNI",
                             color = colorTextSecondary.copy(alpha = 0.65f),
                             fontSize = 14.sp
                         )
@@ -401,24 +400,6 @@ fun LoginScreen(
                     fontWeight = FontWeight.Bold
                 )
             }
-
-            Spacer(modifier = Modifier.height(26.dp))
-
-            Text(
-                text = buildAnnotatedString {
-                    withStyle(SpanStyle(color = colorTextSecondary)) {
-                        append("¿Probar cargos (Admin, Empadronador, Trámites)? ")
-                    }
-                    withStyle(SpanStyle(color = Color.White, fontWeight = FontWeight.ExtraBold)) {
-                        append("Ver cargos")
-                    }
-                },
-                fontSize = 12.5.sp,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.clickable {
-                    dialogoAyuda = "ACTIVO"
-                }
-            )
         }
     }
 
@@ -546,57 +527,6 @@ fun LoginScreen(
             dismissButton = {
                 TextButton(onClick = { mostrarDialogoGoogle = false }) {
                     Text("Cerrar")
-                }
-            }
-        )
-    }
-
-    if (dialogoAyuda != null) {
-        AlertDialog(
-            onDismissRequest = { dialogoAyuda = null },
-            title = { Text("Cargos y Operadores RENIEC (RBAC)", fontWeight = FontWeight.Bold) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = "El Administrador (@admin) puede crear nuevos usuarios y asignar cargos desde la pestaña Perfil. Toca un cargo para autocompletar:",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    listOf(
-                        Triple("admin", "Administrador General", "Control total + Crear Operadores y Asignar Cargos"),
-                        Triple("empadronador", "Empadronador de Padrón", "Registrar y editar Padrón DNI (+50K) y Biometría"),
-                        Triple("tramitador", "Gestor de Trámites DNI", "Registrar, aprobar y atender Trámites + Voucher QR"),
-                        Triple("dolton", "Brigadista Integral", "Empadronamiento y Trámites de Campo"),
-                        Triple("verificador", "Fiscalizador / Verificador", "Solo consulta de Padrón y validación biométrica")
-                    ).forEach { (usr, cargo, desc) ->
-                        Surface(
-                            color = MaterialTheme.colorScheme.secondaryContainer,
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    viewModel.onUsuarioChange(usr)
-                                    viewModel.onClaveChange("123456")
-                                    dialogoAyuda = null
-                                }
-                        ) {
-                            Column(modifier = Modifier.padding(10.dp)) {
-                                Text(
-                                    text = "$cargo (@$usr • clave: 123456)",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.ExtraBold
-                                )
-                                Text(
-                                    text = desc,
-                                    style = MaterialTheme.typography.labelSmall
-                                )
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { dialogoAyuda = null }) {
-                    Text("Cerrar", fontWeight = FontWeight.Bold)
                 }
             }
         )

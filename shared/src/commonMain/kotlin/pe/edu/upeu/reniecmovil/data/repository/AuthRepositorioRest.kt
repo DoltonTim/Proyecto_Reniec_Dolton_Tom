@@ -14,9 +14,15 @@ import pe.edu.upeu.reniecmovil.domain.model.Sesion
 import pe.edu.upeu.reniecmovil.domain.repository.AuthRepository
 
 @Serializable
+private data class SupabaseOtpOptions(
+    val emailRedirectTo: String? = "https://proyecto-reniec-dolton-tom.pages.dev"
+)
+
+@Serializable
 private data class SupabaseOtpRequest(
     val email: String,
-    val create_user: Boolean = true
+    val create_user: Boolean = true,
+    val options: SupabaseOtpOptions = SupabaseOtpOptions()
 )
 
 @Serializable
