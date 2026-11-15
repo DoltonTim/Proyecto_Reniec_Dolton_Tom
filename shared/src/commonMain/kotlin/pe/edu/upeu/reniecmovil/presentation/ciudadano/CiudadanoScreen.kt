@@ -306,13 +306,14 @@ fun CiudadanoScreen(
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = "Resultados en ${if (state.filtroDepartamento == "TODOS") "Perú (+50,000 en nube)" else state.filtroDepartamento} (${state.ciudadanosFiltrados.size} mostrados)",
                     style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
                 )
                 if (state.filtroDniONombre.isNotBlank()) {
                     TextButton(onClick = { viewModel.onFiltroChange("") }) {
