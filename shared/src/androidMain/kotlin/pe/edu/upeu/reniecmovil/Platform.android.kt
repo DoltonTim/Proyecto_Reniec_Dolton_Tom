@@ -3,6 +3,7 @@ package pe.edu.upeu.reniecmovil
 import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.hardware.biometrics.BiometricPrompt
 import android.media.FaceDetector
 import android.os.Build
@@ -31,16 +32,33 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import java.io.ByteArrayOutputStream
 
 actual fun obtenerInfoDispositivo(): InfoDispositivo = InfoDispositivo(
     nombrePlataforma = "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})",
     modeloEquipo = "${Build.MANUFACTURER} ${Build.MODEL}"
 )
+
+actual fun imageBitmapAJpegBytes(imagen: ImageBitmap): ByteArray? = try {
+    val bmp = imagen.asAndroidBitmap()
+    val out = ByteArrayOutputStream()
+    bmp.compress(Bitmap.CompressFormat.JPEG, 82, out)
+    out.toByteArray()
+} catch (_: Exception) {
+    null
+}
+
+actual fun jpegBytesAImageBitmap(bytes: ByteArray): ImageBitmap? = try {
+    BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
+} catch (_: Exception) {
+    null
+}
 
 @Composable
 actual fun BotonesCapturaHardwareNativo(
@@ -68,6 +86,10 @@ actual fun BotonesCapturaHardwareNativo(
             }
             val claveDni = dni.ifBlank { "TEMP" }
             BiometriaSesionCache.fotosPorDni[claveDni] = imgBitmap
+            imageBitmapAJpegBytes(imgBitmap)?.let {
+                BiometriaSesionCache.bytesFotoPorDni[claveDni] = it
+            }
+            BiometriaSesionCache.fotosNoEncontradasEnNube.remove(claveDni)
             val resumen = if (rostrosDetectados > 0) {
                 "Cámara Real Android (${bitmap.width}x${bitmap.height}px) • Rostro Detectado 99.8% AFIS"
             } else {

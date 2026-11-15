@@ -54,6 +54,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -76,14 +77,19 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
 import pe.edu.upeu.reniecmovil.BiometriaSesionCache
 import pe.edu.upeu.reniecmovil.BotonesCapturaHardwareNativo
+import pe.edu.upeu.reniecmovil.data.remote.FotoStorageApi
 import pe.edu.upeu.reniecmovil.data.remote.dto.AuditoriaDto
 import pe.edu.upeu.reniecmovil.domain.model.CatalogoUbigeoReniec
 import pe.edu.upeu.reniecmovil.domain.model.EstadoTramiteDni
 import pe.edu.upeu.reniecmovil.domain.model.TipoTramiteDni
 import pe.edu.upeu.reniecmovil.domain.model.TramiteDni
 import pe.edu.upeu.reniecmovil.domain.model.UbigeoReniec
+import pe.edu.upeu.reniecmovil.imageBitmapAJpegBytes
+import pe.edu.upeu.reniecmovil.jpegBytesAImageBitmap
 
 private val NaranjaPixel = Color(0xFFF05922)
 private val FondoBentoOscuro = Color(0xFF101014)
@@ -600,6 +606,26 @@ fun DialogoVerificacionBiometrica(
     var progresoRaw by remember { mutableStateOf(0.1f) }
     var fotoCapturada by remember(dni) { mutableStateOf<ImageBitmap?>(BiometriaSesionCache.fotosPorDni[dni]) }
     var detallePersonalizado by remember { mutableStateOf<String?>(null) }
+    val fotoStorageApi: FotoStorageApi = koinInject()
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(dni) {
+        if (dni.length == 8 &&
+            fotoCapturada == null &&
+            !BiometriaSesionCache.fotosNoEncontradasEnNube.contains(dni)
+        ) {
+            val bytes = fotoStorageApi.descargarFotoCiudadano(dni)
+            if (bytes != null) {
+                jpegBytesAImageBitmap(bytes)?.let { bmp ->
+                    BiometriaSesionCache.bytesFotoPorDni[dni] = bytes
+                    BiometriaSesionCache.fotosPorDni[dni] = bmp
+                    fotoCapturada = bmp
+                }
+            } else {
+                BiometriaSesionCache.fotosNoEncontradasEnNube.add(dni)
+            }
+        }
+    }
 
     val progresoAnimado by animateFloatAsState(
         targetValue = progresoRaw,
@@ -794,6 +820,18 @@ fun DialogoVerificacionBiometrica(
                     val modoTexto = detallePersonalizado ?: if (modoFacial) "BioFacial 3D" else "Huella Dactilar AFIS"
                     if (modoFacial) {
                         BiometriaSesionCache.estadoFacialPorDni[claveDni] = "$modoTexto ($puntajeBiometrico)"
+                        val bmp = fotoCapturada
+                        if (bmp != null) {
+                            BiometriaSesionCache.fotosPorDni[claveDni] = bmp
+                            val bytes = BiometriaSesionCache.bytesFotoPorDni[claveDni] ?: imageBitmapAJpegBytes(bmp)
+                            if (bytes != null) {
+                                BiometriaSesionCache.bytesFotoPorDni[claveDni] = bytes
+                                if (dni.length == 8) {
+                                    BiometriaSesionCache.fotosNoEncontradasEnNube.remove(dni)
+                                    scope.launch { fotoStorageApi.subirFotoCiudadano(dni, bytes) }
+                                }
+                            }
+                        }
                     } else {
                         BiometriaSesionCache.estadoHuellaPorDni[claveDni] = "$modoTexto ($puntajeBiometrico)"
                     }
@@ -826,7 +864,28 @@ fun TarjetaCapturaBiometricaFormulario(
     onHuellaActualizada: (String) -> Unit,
     onAbrirEscanerCompleto: () -> Unit
 ) {
-    val fotoGuardada = BiometriaSesionCache.fotosPorDni[dni.ifBlank { "TEMP" }] ?: BiometriaSesionCache.fotosPorDni[dni]
+    val fotoStorageApi: FotoStorageApi = koinInject()
+    var versionNube by remember(dni) { mutableStateOf(0) }
+    LaunchedEffect(dni) {
+        if (dni.length == 8 &&
+            BiometriaSesionCache.fotosPorDni[dni] == null &&
+            !BiometriaSesionCache.fotosNoEncontradasEnNube.contains(dni)
+        ) {
+            val bytes = fotoStorageApi.descargarFotoCiudadano(dni)
+            if (bytes != null) {
+                jpegBytesAImageBitmap(bytes)?.let { bmp ->
+                    BiometriaSesionCache.bytesFotoPorDni[dni] = bytes
+                    BiometriaSesionCache.fotosPorDni[dni] = bmp
+                    versionNube++
+                }
+            } else {
+                BiometriaSesionCache.fotosNoEncontradasEnNube.add(dni)
+            }
+        }
+    }
+    val fotoGuardada = remember(dni, estadoFacial, versionNube) {
+        BiometriaSesionCache.fotosPorDni[dni.ifBlank { "TEMP" }] ?: BiometriaSesionCache.fotosPorDni[dni]
+    }
 
     Surface(
         color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f),

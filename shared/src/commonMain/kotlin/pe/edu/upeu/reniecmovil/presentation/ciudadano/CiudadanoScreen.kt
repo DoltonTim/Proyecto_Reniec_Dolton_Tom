@@ -48,10 +48,12 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -61,7 +63,12 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
 import pe.edu.upeu.reniecmovil.BiometriaSesionCache
+import pe.edu.upeu.reniecmovil.data.remote.FotoStorageApi
+import pe.edu.upeu.reniecmovil.imageBitmapAJpegBytes
+import pe.edu.upeu.reniecmovil.jpegBytesAImageBitmap
 import pe.edu.upeu.reniecmovil.domain.model.CatalogoUbigeoReniec
 import pe.edu.upeu.reniecmovil.domain.model.Ciudadano
 import pe.edu.upeu.reniecmovil.domain.model.EstadoCivil
@@ -415,13 +422,33 @@ private fun TarjetaDniElectronicoInteractivo(
     val ubigeoCatalogo = remember(ciudadano.ubigeo) {
         CatalogoUbigeoReniec.buscarUbigeo(ciudadano.ubigeo)
     }
-    val fotoCapturada = remember(ciudadano.dni, versionBiometria) {
-        BiometriaSesionCache.fotosPorDni[ciudadano.dni] ?: BiometriaSesionCache.fotosPorDni["TEMP"]
+    val fotoStorageApi: FotoStorageApi = koinInject()
+    var versionFotoNube by remember(ciudadano.dni) { mutableStateOf(0) }
+    LaunchedEffect(ciudadano.dni, versionBiometria) {
+        if (ciudadano.dni.length == 8 &&
+            BiometriaSesionCache.fotosPorDni[ciudadano.dni] == null &&
+            !BiometriaSesionCache.fotosNoEncontradasEnNube.contains(ciudadano.dni)
+        ) {
+            val bytes = fotoStorageApi.descargarFotoCiudadano(ciudadano.dni)
+            if (bytes != null) {
+                jpegBytesAImageBitmap(bytes)?.let { bmp ->
+                    BiometriaSesionCache.bytesFotoPorDni[ciudadano.dni] = bytes
+                    BiometriaSesionCache.fotosPorDni[ciudadano.dni] = bmp
+                    BiometriaSesionCache.estadoFacialPorDni[ciudadano.dni] = "Foto Nube RENIEC"
+                    versionFotoNube++
+                }
+            } else {
+                BiometriaSesionCache.fotosNoEncontradasEnNube.add(ciudadano.dni)
+            }
+        }
     }
-    val estadoFacial = remember(ciudadano.dni, versionBiometria) {
+    val fotoCapturada = remember(ciudadano.dni, versionBiometria, versionFotoNube) {
+        BiometriaSesionCache.fotosPorDni[ciudadano.dni]
+    }
+    val estadoFacial = remember(ciudadano.dni, versionBiometria, versionFotoNube) {
         BiometriaSesionCache.estadoFacialPorDni[ciudadano.dni] ?: "AFIS 99.6% Verificado"
     }
-    val estadoHuella = remember(ciudadano.dni, versionBiometria) {
+    val estadoHuella = remember(ciudadano.dni, versionBiometria, versionFotoNube) {
         BiometriaSesionCache.estadoHuellaPorDni[ciudadano.dni] ?: "Índice Der. Registrado"
     }
 
@@ -752,10 +779,31 @@ private fun FormularioCiudadanoCard(
     onCancelar: () -> Unit
 ) {
     val claveDni = form.dni.ifBlank { "TEMP" }
-    var estadoRostroLocal by remember(claveDni, versionBiometria) {
+    val fotoStorageApi: FotoStorageApi = koinInject()
+    val scope = rememberCoroutineScope()
+    var versionFotoLocal by remember(claveDni) { mutableStateOf(0) }
+    LaunchedEffect(form.dni) {
+        if (form.dni.length == 8 &&
+            BiometriaSesionCache.fotosPorDni[form.dni] == null &&
+            !BiometriaSesionCache.fotosNoEncontradasEnNube.contains(form.dni)
+        ) {
+            val bytes = fotoStorageApi.descargarFotoCiudadano(form.dni)
+            if (bytes != null) {
+                jpegBytesAImageBitmap(bytes)?.let { bmp ->
+                    BiometriaSesionCache.bytesFotoPorDni[form.dni] = bytes
+                    BiometriaSesionCache.fotosPorDni[form.dni] = bmp
+                    BiometriaSesionCache.estadoFacialPorDni[form.dni] = "Foto Nube RENIEC"
+                    versionFotoLocal++
+                }
+            } else {
+                BiometriaSesionCache.fotosNoEncontradasEnNube.add(form.dni)
+            }
+        }
+    }
+    var estadoRostroLocal by remember(claveDni, versionBiometria, versionFotoLocal) {
         mutableStateOf(BiometriaSesionCache.estadoFacialPorDni[claveDni] ?: if (esEdicion) "Registrado AFIS 99.6%" else "Pendiente captura")
     }
-    var estadoHuellaLocal by remember(claveDni, versionBiometria) {
+    var estadoHuellaLocal by remember(claveDni, versionBiometria, versionFotoLocal) {
         mutableStateOf(BiometriaSesionCache.estadoHuellaPorDni[claveDni] ?: if (esEdicion) "Huella Índice Der. OK" else "Pendiente captura")
     }
 
@@ -781,8 +829,17 @@ private fun FormularioCiudadanoCard(
                 estadoHuella = estadoHuellaLocal,
                 onRostroActualizado = { resumen, bmp ->
                     estadoRostroLocal = resumen
-                    if (form.dni.isNotBlank() && bmp != null) {
-                        BiometriaSesionCache.fotosPorDni[form.dni] = bmp
+                    val destinoDni = form.dni.ifBlank { "TEMP" }
+                    if (bmp != null) {
+                        BiometriaSesionCache.fotosPorDni[destinoDni] = bmp
+                        val bytes = BiometriaSesionCache.bytesFotoPorDni[destinoDni] ?: imageBitmapAJpegBytes(bmp)
+                        if (bytes != null) {
+                            BiometriaSesionCache.bytesFotoPorDni[destinoDni] = bytes
+                            if (form.dni.length == 8) {
+                                BiometriaSesionCache.fotosNoEncontradasEnNube.remove(form.dni)
+                                scope.launch { fotoStorageApi.subirFotoCiudadano(form.dni, bytes) }
+                            }
+                        }
                     }
                     onBiometriaCapturada("ROSTRO", resumen)
                 },
@@ -947,16 +1004,26 @@ private fun FormularioCiudadanoCard(
             ) {
                 Button(
                     onClick = {
-                        // Si se capturó como TEMP antes de escribir el DNI, asociarlo al DNI final
+                        // Si se capturó como TEMP antes de escribir el DNI, asociarlo al DNI final y subir a Supabase Storage
                         if (form.dni.length == 8) {
-                            BiometriaSesionCache.fotosPorDni["TEMP"]?.let {
+                            BiometriaSesionCache.fotosPorDni.remove("TEMP")?.let {
                                 BiometriaSesionCache.fotosPorDni[form.dni] = it
                             }
-                            BiometriaSesionCache.estadoFacialPorDni["TEMP"]?.let {
+                            BiometriaSesionCache.bytesFotoPorDni.remove("TEMP")?.let {
+                                BiometriaSesionCache.bytesFotoPorDni[form.dni] = it
+                            }
+                            BiometriaSesionCache.estadoFacialPorDni.remove("TEMP")?.let {
                                 BiometriaSesionCache.estadoFacialPorDni[form.dni] = it
                             }
-                            BiometriaSesionCache.estadoHuellaPorDni["TEMP"]?.let {
+                            BiometriaSesionCache.estadoHuellaPorDni.remove("TEMP")?.let {
                                 BiometriaSesionCache.estadoHuellaPorDni[form.dni] = it
+                            }
+                            val bytesParaNube = BiometriaSesionCache.bytesFotoPorDni[form.dni]
+                                ?: BiometriaSesionCache.fotosPorDni[form.dni]?.let { imageBitmapAJpegBytes(it) }
+                            if (bytesParaNube != null) {
+                                BiometriaSesionCache.bytesFotoPorDni[form.dni] = bytesParaNube
+                                BiometriaSesionCache.fotosNoEncontradasEnNube.remove(form.dni)
+                                scope.launch { fotoStorageApi.subirFotoCiudadano(form.dni, bytesParaNube) }
                             }
                         }
                         onGuardar()

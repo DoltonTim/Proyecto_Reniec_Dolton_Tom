@@ -11,6 +11,7 @@ import pe.edu.upeu.reniecmovil.data.local.AlmacenSeguro
 import pe.edu.upeu.reniecmovil.data.local.ReniecLocalDataSource
 import pe.edu.upeu.reniecmovil.data.remote.AuditoriaApi
 import pe.edu.upeu.reniecmovil.data.remote.CiudadanoApi
+import pe.edu.upeu.reniecmovil.data.remote.FotoStorageApi
 import pe.edu.upeu.reniecmovil.data.remote.OperadorApi
 import pe.edu.upeu.reniecmovil.data.remote.TramiteApi
 import pe.edu.upeu.reniecmovil.data.remote.crearHttpClient
@@ -43,6 +44,7 @@ val dataModule = module {
     single { TramiteApi(get()) }
     single { AuditoriaApi(get()) }
     single { OperadorApi(get()) }
+    single { FotoStorageApi(get()) }
     single<CiudadanoRepository> { CiudadanoRepositorioOffline(get(), get()) }
     single<TramiteRepository> { TramiteRepositorioOffline(get(), get()) }
     single<AuthRepository> { AuthRepositorioRest(get(), get()) }

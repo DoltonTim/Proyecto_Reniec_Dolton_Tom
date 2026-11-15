@@ -7,10 +7,15 @@ import io.ktor.client.plugins.HttpRequestTimeoutException
 import io.ktor.client.plugins.ServerResponseException
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.client.request.patch
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.readRawBytes
+import io.ktor.http.ContentType
+import io.ktor.http.content.ByteArrayContent
 import io.ktor.http.encodeURLParameter
+import io.ktor.http.isSuccess
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.Serializable
 import pe.edu.upeu.reniecmovil.data.remote.dto.AuditoriaDto
@@ -233,5 +238,57 @@ open class OperadorApi(
             }
         }
         Unit
+    }
+}
+
+/**
+ * Cliente para almacenar y recuperar fotografías biométricas JPEG en Supabase Storage
+ * dentro del bucket público `fotos-ciudadanos` ({dni}.jpg).
+ */
+open class FotoStorageApi(private val client: HttpClient) {
+    companion object {
+        const val BUCKET_FOTOS = "fotos-ciudadanos"
+        const val STORAGE_BASE = "https://vktclzpkebwvfbrvtpxo.supabase.co/storage/v1/object"
+    }
+
+    fun urlPublicaFoto(dni: String): String = "$STORAGE_BASE/public/$BUCKET_FOTOS/${dni.trim()}.jpg"
+
+    open suspend fun subirFotoCiudadano(dni: String, jpegBytes: ByteArray): Result<String> {
+        val dniLimpio = dni.trim()
+        if (dniLimpio.isEmpty() || jpegBytes.isEmpty()) {
+            return Result.failure(IllegalArgumentException("DNI o imagen vacía"))
+        }
+        return try {
+            val respuesta = client.post("$STORAGE_BASE/$BUCKET_FOTOS/$dniLimpio.jpg") {
+                header("x-upsert", "true")
+                setBody(ByteArrayContent(jpegBytes, ContentType.Image.JPEG))
+            }
+            if (respuesta.status.isSuccess()) {
+                Result.success(urlPublicaFoto(dniLimpio))
+            } else {
+                Result.failure(Exception("HTTP ${respuesta.status.value} al subir fotografía"))
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    open suspend fun descargarFotoCiudadano(dni: String): ByteArray? {
+        val dniLimpio = dni.trim()
+        if (dniLimpio.isEmpty()) return null
+        return try {
+            val respuesta = client.get(urlPublicaFoto(dniLimpio))
+            if (respuesta.status.isSuccess()) {
+                respuesta.readRawBytes().takeIf { it.isNotEmpty() }
+            } else {
+                null
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            null
+        }
     }
 }
