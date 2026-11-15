@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -96,135 +97,158 @@ fun ReportesScreen(
             .sortedByDescending { it.second }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         // Cabecera Informativa
-        ElevatedCard(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface)
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+        item {
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                Column(
+                    modifier = Modifier.padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Surface(
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            modifier = Modifier.size(38.dp)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.weight(1f)
                         ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.Default.Home,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(20.dp)
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                modifier = Modifier.size(38.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Default.Home,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                            Column {
+                                Text(
+                                    text = "Panel Estadístico y Reportes",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.ExtraBold
+                                )
+                                Text(
+                                    text = "Métricas de productividad y auditoría legal en tiempo real",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
-                        Column {
-                            Text(
-                                text = "Panel Estadístico y Reportes",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.ExtraBold
-                            )
-                            Text(
-                                text = "Métricas de productividad y auditoría legal en tiempo real",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                        IconButton(onClick = { cargarReportes() }) {
+                            Icon(Icons.Default.Refresh, contentDescription = "Recargar")
                         }
                     }
-                    IconButton(onClick = { cargarReportes() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Recargar")
-                    }
-                }
 
-                // KPIs Rápidos en Grid
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    CardKpi(
-                        titulo = "Operaciones",
-                        valor = "$totalEventos",
-                        subtitulo = "Acciones en BD",
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.weight(1f)
-                    )
-                    CardKpi(
-                        titulo = "Operadores",
-                        valor = "${operadoresUnicos.size - 1}",
-                        subtitulo = "Activos/Cesados",
-                        color = Color(0xFFC6FF00),
-                        modifier = Modifier.weight(1f)
-                    )
-                    CardKpi(
-                        titulo = "Categorías",
-                        valor = "${porEntidad.size}",
-                        subtitulo = "Módulos RENIEC",
-                        color = MaterialTheme.colorScheme.secondary,
-                        modifier = Modifier.weight(1f)
-                    )
+                    // KPIs Rápidos en Grid
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        CardKpi(
+                            titulo = "Operaciones",
+                            valor = "$totalEventos",
+                            subtitulo = "Acciones en BD",
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.weight(1f)
+                        )
+                        CardKpi(
+                            titulo = "Operadores",
+                            valor = "${(operadoresUnicos.size - 1).coerceAtLeast(0)}",
+                            subtitulo = "Activos/Cesados",
+                            color = Color(0xFFC6FF00),
+                            modifier = Modifier.weight(1f)
+                        )
+                        CardKpi(
+                            titulo = "Categorías",
+                            valor = "${porEntidad.size}",
+                            subtitulo = "Módulos RENIEC",
+                            color = MaterialTheme.colorScheme.secondary,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 }
             }
         }
 
         // Selector de Pestaña: Estadísticas vs Historial
-        TabRow(
-            selectedTabIndex = tabSeleccionada,
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-            modifier = Modifier.clip(RoundedCornerShape(12.dp))
-        ) {
-            Tab(
-                selected = tabSeleccionada == 0,
-                onClick = { tabSeleccionada = 0 },
-                text = { Text("📊 Gráficos Estadísticos", fontWeight = FontWeight.Bold, fontSize = 13.sp) }
-            )
-            Tab(
-                selected = tabSeleccionada == 1,
-                onClick = { tabSeleccionada = 1 },
-                text = { Text("📋 Historial Inmutable", fontWeight = FontWeight.Bold, fontSize = 13.sp) }
-            )
+        item {
+            TabRow(
+                selectedTabIndex = tabSeleccionada,
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                modifier = Modifier.clip(RoundedCornerShape(12.dp))
+            ) {
+                Tab(
+                    selected = tabSeleccionada == 0,
+                    onClick = { tabSeleccionada = 0 },
+                    text = {
+                        Text(
+                            text = "📊 Gráficos",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            maxLines = 1,
+                            softWrap = false
+                        )
+                    }
+                )
+                Tab(
+                    selected = tabSeleccionada == 1,
+                    onClick = { tabSeleccionada = 1 },
+                    text = {
+                        Text(
+                            text = "📋 Historial",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            maxLines = 1,
+                            softWrap = false
+                        )
+                    }
+                )
+            }
         }
 
-        // Filtro por Operador
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                text = "Filtrar por Operador:",
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                operadoresUnicos.take(5).forEach { op ->
-                    FilterChip(
-                        selected = (filtroOperador.isBlank() && op == "TODOS") || filtroOperador.equals(op, ignoreCase = true),
-                        onClick = { filtroOperador = if (op == "TODOS") "" else op },
-                        label = {
-                            Text(
-                                text = if (op == "TODOS") "Todos" else "@$op",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    )
+        // Filtro por Operador (desplazable horizontalmente para pantallas angostas)
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = "Filtrar por Operador:",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                LazyRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    items(operadoresUnicos) { op ->
+                        FilterChip(
+                            selected = (filtroOperador.isBlank() && op == "TODOS") || filtroOperador.equals(op, ignoreCase = true),
+                            onClick = { filtroOperador = if (op == "TODOS") "" else op },
+                            label = {
+                                Text(
+                                    text = if (op == "TODOS") "Todos" else "@$op",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1
+                                )
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -232,63 +256,52 @@ fun ReportesScreen(
         // Contenido según la pestaña seleccionada
         if (tabSeleccionada == 0) {
             // VISTA 1: ESTADÍSTICAS Y GRÁFICOS CIRCULARES
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                // Gráfico 1: Productividad por Operador
-                item {
-                    CardGraficoCircular(
-                        titulo = "📈 Productividad por Operador",
-                        descripcion = "Total de trámites, empadronamientos y biometría registrados por usuario",
-                        datos = porOperador.map { Pair("@${it.first}", it.second) },
-                        total = totalEventos
-                    )
-                }
+            item {
+                CardGraficoCircular(
+                    titulo = "📈 Productividad por Operador",
+                    descripcion = "Total de trámites, empadronamientos y biometría registrados por usuario",
+                    datos = porOperador.map { Pair("@${it.first}", it.second) },
+                    total = totalEventos
+                )
+            }
 
-                // Gráfico 2: Distribución por Módulo Institucional
-                item {
-                    CardGraficoCircular(
-                        titulo = "🏛️ Actividad por Módulo Institucional",
-                        descripcion = "Proporción de eventos entre Padrón, Trámites, Biometría y Auditoría",
-                        datos = porEntidad.map { Pair(it.first, it.second) },
-                        total = totalEventos
-                    )
-                }
+            item {
+                CardGraficoCircular(
+                    titulo = "🏛️ Actividad por Módulo Institucional",
+                    descripcion = "Proporción de eventos entre Padrón, Trámites, Biometría y Auditoría",
+                    datos = porEntidad.map { Pair(it.first, it.second) },
+                    total = totalEventos
+                )
+            }
 
-                // Gráfico 3: Tipo de Acción Ejecutada
-                item {
-                    CardGraficoCircular(
-                        titulo = "⚡ Tipos de Acción Frecuentes",
-                        descripcion = "Operaciones más recurrentes ejecutadas en el sistema",
-                        datos = porAccion.take(6).map { Pair(it.first, it.second) },
-                        total = totalEventos
-                    )
-                }
+            item {
+                CardGraficoCircular(
+                    titulo = "⚡ Tipos de Acción Frecuentes",
+                    descripcion = "Operaciones más recurrentes ejecutadas en el sistema",
+                    datos = porAccion.take(6).map { Pair(it.first, it.second) },
+                    total = totalEventos
+                )
             }
         } else {
             // VISTA 2: LISTA DE HISTORIAL AUDITADO
             if (eventosFiltrados.isEmpty() && !cargando) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "No se encontraron registros de auditoría.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "No se encontraron registros de auditoría.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             } else {
-                LazyColumn(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    items(eventosFiltrados, key = { it.id }) { ev ->
-                        CardItemHistorial(ev)
-                    }
+                items(eventosFiltrados, key = { it.id }) { ev ->
+                    CardItemHistorial(ev)
                 }
             }
         }
@@ -382,18 +395,18 @@ private fun CardGraficoCircular(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             } else {
-                Row(
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     Box(
-                        modifier = Modifier.size(130.dp),
+                        modifier = Modifier.size(144.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Canvas(modifier = Modifier.fillMaxSize().padding(10.dp)) {
+                        Canvas(modifier = Modifier.fillMaxSize().padding(12.dp)) {
                             var anguloInicio = -90f
-                            val grosor = 24.dp.toPx()
+                            val grosor = 26.dp.toPx()
                             datos.forEachIndexed { index, (_, valor) ->
                                 val barrido = (valor.toFloat() / total.toFloat()) * 360f
                                 val color = coloresGraficoCircular[index % coloresGraficoCircular.size]
@@ -422,7 +435,7 @@ private fun CardGraficoCircular(
                     }
 
                     Column(
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         datos.forEachIndexed { index, (etiqueta, valor) ->
@@ -558,12 +571,13 @@ private fun CardItemHistorial(ev: AuditoriaDto) {
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.weight(1f)
                 ) {
                     Surface(
                         color = MaterialTheme.colorScheme.primaryContainer,
@@ -574,20 +588,24 @@ private fun CardItemHistorial(ev: AuditoriaDto) {
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.ExtraBold,
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            maxLines = 1,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                         )
                     }
                     Text(
-                        text = ev.rol,
+                        text = ev.rol.removePrefix("ROLE_"),
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
                 ev.createdAt?.let { fecha ->
                     Text(
-                        text = fecha.take(19).replace("T", " "),
+                        text = fecha.take(16).replace("T", " "),
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1
                     )
                 }
             }
@@ -606,17 +624,21 @@ private fun CardItemHistorial(ev: AuditoriaDto) {
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = "DNI Ref: ${ev.referenciaDni}",
                     style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = "Dispositivo: ${ev.dispositivo}",
+                    text = ev.dispositivo,
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }

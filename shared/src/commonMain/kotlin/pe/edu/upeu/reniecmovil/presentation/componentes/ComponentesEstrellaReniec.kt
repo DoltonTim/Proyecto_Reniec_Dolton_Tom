@@ -1287,11 +1287,7 @@ fun SeccionHistorialAuditoria(
                             modifier = Modifier.padding(10.dp),
                             verticalArrangement = Arrangement.spacedBy(3.dp)
                         ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                 Text(
                                     text = "${ev.accion} • DNI ${ev.referenciaDni}",
                                     style = MaterialTheme.typography.labelMedium,
@@ -1301,7 +1297,8 @@ fun SeccionHistorialAuditoria(
                                 Text(
                                     text = "@${ev.usuario} (${ev.rol.removePrefix("ROLE_")})",
                                     style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                             Text(
