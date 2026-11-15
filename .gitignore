@@ -18,3 +18,9 @@ captures
 !*.xcworkspace/contents.xcworkspacedata
 **/xcshareddata/WorkspaceSettings.xcsettings
 node_modules/
+
+# Firma de entrega (Sesión 14 - nunca versionar secretos)
+keystore.properties
+*.jks
+*.keystore
+

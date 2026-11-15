@@ -77,3 +77,20 @@ cd backend
 .\gradlew.bat :shared:testAndroidHostTest :androidApp:assembleDebug
 ```
 El APK compilado se genera en: `androidApp/build/outputs/apk/debug/androidApp-debug.apk`.
+
+### Paso 4: Firma y Generación de Builds de Entrega (`.aab` y `.apk` - Sesión 14)
+Las credenciales de firma se leen desde un archivo `keystore.properties` en la raíz del proyecto (ignorado en `.gitignore` junto con `*.jks` y `*.keystore`):
+```properties
+# keystore.properties (raíz del proyecto, NUNCA en Git)
+storeFile=C:/Users/Doltin/claves/reniecmovil.jks
+storePassword=********
+keyAlias=reniecmovil
+keyPassword=********
+```
+Comandos para generar y verificar los artefactos firmados de entrega:
+```powershell
+.\gradlew.bat :androidApp:bundleRelease
+.\gradlew.bat :androidApp:assembleRelease
+apksigner verify --print-certs androidApp/build/outputs/apk/release/androidApp-release.apk
+```
+
