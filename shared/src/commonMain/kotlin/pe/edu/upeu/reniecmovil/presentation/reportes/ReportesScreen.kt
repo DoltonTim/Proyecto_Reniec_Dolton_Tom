@@ -1,6 +1,7 @@
 package pe.edu.upeu.reniecmovil.presentation.reportes
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -16,7 +17,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
@@ -228,41 +231,38 @@ fun ReportesScreen(
 
         // Contenido según la pestaña seleccionada
         if (tabSeleccionada == 0) {
-            // VISTA 1: ESTADÍSTICAS Y GRÁFICOS DE BARRAS
+            // VISTA 1: ESTADÍSTICAS Y GRÁFICOS CIRCULARES
             LazyColumn(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 // Gráfico 1: Productividad por Operador
                 item {
-                    CardGraficoEstadistico(
+                    CardGraficoCircular(
                         titulo = "📈 Productividad por Operador",
                         descripcion = "Total de trámites, empadronamientos y biometría registrados por usuario",
                         datos = porOperador.map { Pair("@${it.first}", it.second) },
-                        total = totalEventos,
-                        colorBarra = Color(0xFFC6FF00)
+                        total = totalEventos
                     )
                 }
 
                 // Gráfico 2: Distribución por Módulo Institucional
                 item {
-                    CardGraficoEstadistico(
+                    CardGraficoCircular(
                         titulo = "🏛️ Actividad por Módulo Institucional",
                         descripcion = "Proporción de eventos entre Padrón, Trámites, Biometría y Auditoría",
                         datos = porEntidad.map { Pair(it.first, it.second) },
-                        total = totalEventos,
-                        colorBarra = MaterialTheme.colorScheme.primary
+                        total = totalEventos
                     )
                 }
 
                 // Gráfico 3: Tipo de Acción Ejecutada
                 item {
-                    CardGraficoEstadistico(
+                    CardGraficoCircular(
                         titulo = "⚡ Tipos de Acción Frecuentes",
                         descripcion = "Operaciones más recurrentes ejecutadas en el sistema",
                         datos = porAccion.take(6).map { Pair(it.first, it.second) },
-                        total = totalEventos,
-                        colorBarra = MaterialTheme.colorScheme.tertiary
+                        total = totalEventos
                     )
                 }
             }
@@ -329,6 +329,135 @@ private fun CardKpi(
                 fontSize = 10.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
             )
+        }
+    }
+}
+
+private val coloresGraficoCircular = listOf(
+    Color(0xFF2962FF),
+    Color(0xFF00C853),
+    Color(0xFFFFAB00),
+    Color(0xFFD500F9),
+    Color(0xFFFF3D00),
+    Color(0xFF00B8D4),
+    Color(0xFFC6FF00),
+    Color(0xFFFF4081)
+)
+
+@Composable
+private fun CardGraficoCircular(
+    titulo: String,
+    descripcion: String,
+    datos: List<Pair<String, Int>>,
+    total: Int
+) {
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Column {
+                Text(
+                    text = titulo,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.ExtraBold
+                )
+                Text(
+                    text = descripcion,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+
+            if (datos.isEmpty() || total == 0) {
+                Text(
+                    text = "Sin datos estadísticos registrados.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Box(
+                        modifier = Modifier.size(130.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Canvas(modifier = Modifier.fillMaxSize().padding(10.dp)) {
+                            var anguloInicio = -90f
+                            val grosor = 24.dp.toPx()
+                            datos.forEachIndexed { index, (_, valor) ->
+                                val barrido = (valor.toFloat() / total.toFloat()) * 360f
+                                val color = coloresGraficoCircular[index % coloresGraficoCircular.size]
+                                drawArc(
+                                    color = color,
+                                    startAngle = anguloInicio,
+                                    sweepAngle = barrido,
+                                    useCenter = false,
+                                    style = Stroke(width = grosor)
+                                )
+                                anguloInicio += barrido
+                            }
+                        }
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "$total",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                            Text(
+                                text = "Total",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        datos.forEachIndexed { index, (etiqueta, valor) ->
+                            val color = coloresGraficoCircular[index % coloresGraficoCircular.size]
+                            val porcentaje = ((valor.toFloat() / total.toFloat()) * 100).toInt()
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(10.dp)
+                                        .clip(CircleShape)
+                                        .background(color)
+                                )
+                                Text(
+                                    text = etiqueta,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.Medium,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Text(
+                                    text = "$valor ($porcentaje%)",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = color
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
