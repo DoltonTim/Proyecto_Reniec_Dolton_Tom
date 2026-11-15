@@ -17,6 +17,10 @@ actual fun obtenerInfoDispositivo(): InfoDispositivo = InfoDispositivo(
     modeloEquipo = UIDevice.currentDevice.model
 )
 
+actual fun imageBitmapAJpegBytes(imagen: ImageBitmap): ByteArray? = null
+
+actual fun jpegBytesAImageBitmap(bytes: ByteArray): ImageBitmap? = null
+
 @Composable
 actual fun BotonesCapturaHardwareNativo(
     dni: String,

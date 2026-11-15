@@ -13,9 +13,15 @@ expect fun obtenerInfoDispositivo(): InfoDispositivo
 
 object BiometriaSesionCache {
     val fotosPorDni = mutableMapOf<String, ImageBitmap>()
+    val bytesFotoPorDni = mutableMapOf<String, ByteArray>()
+    val fotosNoEncontradasEnNube = mutableSetOf<String>()
     val estadoFacialPorDni = mutableMapOf<String, String>()
     val estadoHuellaPorDni = mutableMapOf<String, String>()
 }
+
+expect fun imageBitmapAJpegBytes(imagen: ImageBitmap): ByteArray?
+
+expect fun jpegBytesAImageBitmap(bytes: ByteArray): ImageBitmap?
 
 @Composable
 expect fun BotonesCapturaHardwareNativo(

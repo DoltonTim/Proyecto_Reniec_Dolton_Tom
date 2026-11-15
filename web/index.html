@@ -62,12 +62,47 @@
     // =========================================================================
     const SUPABASE_URL = "https://vktclzpkebwvfbrvtpxo.supabase.co/rest/v1";
     const SUPABASE_AUTH_URL = "https://vktclzpkebwvfbrvtpxo.supabase.co/auth/v1";
+    const SUPABASE_STORAGE_URL = "https://vktclzpkebwvfbrvtpxo.supabase.co/storage/v1/object";
+    const BUCKET_FOTOS = "fotos-ciudadanos";
     const SUPABASE_KEY = "sb_publishable_R4lNuJJ9kfF9LGuUlbLLgA_MkQIJQ5B";
     const SUPABASE_HEADERS = {
       "apikey": SUPABASE_KEY,
       "Content-Type": "application/json",
       "Prefer": "return=representation"
     };
+
+    const CARGOS_RENIEC = [
+      {
+        codigoRol: "ROLE_ADMIN",
+        etiquetaCargo: "Administrador General RENIEC",
+        descripcion: "Control total: Padrón, Trámites, Aprobación, Eliminación y Gestión de Cargos",
+        permisosCsv: "ROLE_ADMIN,PADRON_LEER,PADRON_ESCRIBIR,PADRON_ELIMINAR,TRAMITES_LEER,TRAMITES_ESCRIBIR,TRAMITES_APROBAR,TRAMITES_ELIMINAR,RECAUDACION_VER"
+      },
+      {
+        codigoRol: "ROLE_EMPADRONADOR",
+        etiquetaCargo: "Empadronador de Padrón y Biometría",
+        descripcion: "Encargado de empadronar, editar ciudadanos y capturar Rostro/Huella",
+        permisosCsv: "ROLE_EMPADRONADOR,PADRON_LEER,PADRON_ESCRIBIR,TRAMITES_LEER"
+      },
+      {
+        codigoRol: "ROLE_TRAMITES",
+        etiquetaCargo: "Registrador y Gestor de Trámites DNI",
+        descripcion: "Encargado de crear, actualizar, aprobar trámites y emitir Vouchers QR",
+        permisosCsv: "ROLE_TRAMITES,PADRON_LEER,TRAMITES_LEER,TRAMITES_ESCRIBIR,TRAMITES_APROBAR"
+      },
+      {
+        codigoRol: "ROLE_BRIGADISTA",
+        etiquetaCargo: "Brigadista Integral (Padrón y Trámites)",
+        descripcion: "Registra ciudadanos y trámites en campañas itinerantes (sin borrado)",
+        permisosCsv: "ROLE_BRIGADISTA,PADRON_LEER,PADRON_ESCRIBIR,TRAMITES_LEER,TRAMITES_ESCRIBIR"
+      },
+      {
+        codigoRol: "ROLE_VERIFICADOR",
+        etiquetaCargo: "Verificador de Consulta y Ventanilla",
+        descripcion: "Solo lectura de Padrón Nacional (+50K) y consulta de estado de trámites",
+        permisosCsv: "ROLE_VERIFICADOR,PADRON_LEER,TRAMITES_LEER"
+      }
+    ];
 
     // =========================================================================
     // 2. CATÁLOGO OFICIAL DE UBIGEOS INEI / RENIEC
@@ -152,7 +187,10 @@
       loginError: null,
       tabActual: "inicio",
       ciudadanos: JSON.parse(localStorage.getItem("reniec_ciudadanos") || JSON.stringify(CIUDADANOS_INICIALES)),
+      totalCiudadanos: 50009,
       tramites: JSON.parse(localStorage.getItem("reniec_tramites") || JSON.stringify(TRAMITES_INICIALES)),
+      auditorias: JSON.parse(localStorage.getItem("reniec_auditorias") || "[]"),
+      operadores: JSON.parse(localStorage.getItem("reniec_operadores") || "[]"),
       filtroDepartamento: "TODOS",
       filtroTexto: "",
       ciudadanoSeleccionadoId: 1,
@@ -160,12 +198,21 @@
       mostrarFormCiudadano: false,
       editandoCiudadanoId: null,
       formCiudadano: { dni: "", nombres: "", apellidoPaterno: "", apellidoMaterno: "", fechaNacimiento: "2000-01-15", estadoCivil: "SOLTERO", ubigeo: "150118 - LIMA / LIMA / LURIGANCHO-CHOSICA", direccion: "", donacionOrganos: true },
+      fotoPendienteFile: null,
+      fotoPendientePreview: null,
+      fotoCacheBuster: {},
+      subiendoFotoDni: null,
       filtroDepTramite: "TODOS",
       filtroEstadoTramite: "TODOS",
       filtroTextoTramite: "",
       mostrarFormTramite: false,
       editandoTramiteId: null,
       formTramite: { dniCiudadano: "", nombreCiudadano: "", tipoTramite: "RENOVACION", estado: "PENDIENTE", ubigeoDestino: "150118 - LIMA / LIMA / LURIGANCHO-CHOSICA", observaciones: "" },
+      tabReportesSub: "graficos",
+      filtroOperadorReporte: "TODOS",
+      mostrarFormOperador: false,
+      editandoOperadorId: null,
+      formOperador: { username: "", password: "", nombreCompleto: "", email: "", telefono: "", cargoRol: "ROLE_BRIGADISTA", sede: "Brigada Móvil UPeU - Lurigancho Ñaña" },
       supabaseConectado: false,
       sincronizando: false
     };
@@ -173,6 +220,8 @@
     function guardarStorage() {
       localStorage.setItem("reniec_ciudadanos", JSON.stringify(state.ciudadanos));
       localStorage.setItem("reniec_tramites", JSON.stringify(state.tramites));
+      localStorage.setItem("reniec_auditorias", JSON.stringify(state.auditorias.slice(0, 150)));
+      localStorage.setItem("reniec_operadores", JSON.stringify(state.operadores));
       if (state.sesion) {
         localStorage.setItem("reniec_sesion", JSON.stringify(state.sesion));
       } else {
@@ -180,13 +229,105 @@
       }
     }
 
+    function urlFotoCiudadano(dni) {
+      if (!dni) return "";
+      const v = state.fotoCacheBuster[dni] || "1";
+      return `${SUPABASE_STORAGE_URL}/public/${BUCKET_FOTOS}/${dni}.jpg?v=${v}`;
+    }
+
+    function archivoAJpegBlob(file) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        const objUrl = URL.createObjectURL(file);
+        img.onload = () => {
+          URL.revokeObjectURL(objUrl);
+          const maxDim = 720;
+          let w = img.width || 480;
+          let h = img.height || 480;
+          if (w > maxDim || h > maxDim) {
+            const escala = maxDim / Math.max(w, h);
+            w = Math.round(w * escala);
+            h = Math.round(h * escala);
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, w, h);
+          canvas.toBlob(blob => {
+            if (blob) resolve(blob);
+            else reject(new Error("No se pudo convertir la foto a JPEG"));
+          }, "image/jpeg", 0.88);
+        };
+        img.onerror = () => {
+          URL.revokeObjectURL(objUrl);
+          reject(new Error("Archivo de imagen inválido"));
+        };
+        img.src = objUrl;
+      });
+    }
+
+    async function subirFotoCiudadano(dni, file) {
+      const dniLimpio = (dni || "").trim();
+      if (!/^\d{8}$/.test(dniLimpio) || !file) return false;
+      state.subiendoFotoDni = dniLimpio;
+      render();
+      try {
+        const jpegBlob = await archivoAJpegBlob(file);
+        const res = await fetch(`${SUPABASE_STORAGE_URL}/${BUCKET_FOTOS}/${dniLimpio}.jpg`, {
+          method: "POST",
+          headers: {
+            "apikey": SUPABASE_KEY,
+            "x-upsert": "true",
+            "Content-Type": "image/jpeg"
+          },
+          body: jpegBlob
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        state.fotoCacheBuster[dniLimpio] = Date.now();
+        await registrarAuditoria("CAPTURA_BIOMETRICA_WEB", "BIOMETRIA", dniLimpio, `Foto biométrica subida a Supabase Storage (${BUCKET_FOTOS}/${dniLimpio}.jpg)`);
+        await sincronizarConSupabase();
+        return true;
+      } catch (err) {
+        mostrarModal("Error al subir fotografía", "No se pudo subir la imagen a Supabase Storage (" + (err.message || "red") + ").");
+        return false;
+      } finally {
+        state.subiendoFotoDni = null;
+        render();
+      }
+    }
+
+    async function registrarAuditoria(accion, entidad, referenciaDni, detalle) {
+      if (!state.sesion) return;
+      const rol = state.sesion.permisos.find(p => p.startsWith("ROLE_")) || "ROLE_ADMIN";
+      try {
+        await fetch(`${SUPABASE_URL}/auditoria_reniec`, {
+          method: "POST",
+          headers: SUPABASE_HEADERS,
+          body: JSON.stringify({
+            usuario: state.sesion.usuario,
+            rol,
+            accion,
+            entidad,
+            referencia_dni: referenciaDni || "SISTEMA",
+            detalle,
+            canal_telemetria: "Cloudflare Pages Web",
+            dispositivo: navigator.userAgent.slice(0, 48)
+          })
+        });
+      } catch (_) {}
+    }
+
     async function sincronizarConSupabase() {
       state.sincronizando = true;
       render();
       try {
-        const [resC, resT] = await Promise.all([
+        const [resC, resCount, resT, resA, resO] = await Promise.all([
           fetch(`${SUPABASE_URL}/ciudadanos?select=*&order=id.desc&limit=80`, { headers: SUPABASE_HEADERS }),
-          fetch(`${SUPABASE_URL}/tramites?select=*&order=id.desc`, { headers: SUPABASE_HEADERS })
+          fetch(`${SUPABASE_URL}/ciudadanos?select=id`, { headers: { ...SUPABASE_HEADERS, "Prefer": "count=exact", "Range": "0-0" } }),
+          fetch(`${SUPABASE_URL}/tramites?select=*&order=id.desc`, { headers: SUPABASE_HEADERS }),
+          fetch(`${SUPABASE_URL}/auditoria_reniec?select=*&order=id.desc&limit=200`, { headers: SUPABASE_HEADERS }),
+          fetch(`${SUPABASE_URL}/operadores_reniec?select=*&order=id.desc`, { headers: SUPABASE_HEADERS })
         ]);
         if (resC.ok) {
           const dataC = await resC.json();
@@ -206,6 +347,11 @@
             state.ciudadanoSeleccionadoId = state.ciudadanos[0]?.id || 1;
           }
         }
+        if (resCount.ok) {
+          const cr = resCount.headers.get("content-range") || "";
+          const totalMatch = cr.match(/\/(\d+)$/);
+          if (totalMatch) state.totalCiudadanos = parseInt(totalMatch[1], 10);
+        }
         if (resT.ok) {
           const dataT = await resT.json();
           state.tramites = dataT.map(t => ({
@@ -218,6 +364,12 @@
             observaciones: t.observaciones,
             fechaRegistro: t.fecha_registro
           }));
+        }
+        if (resA.ok) {
+          state.auditorias = await resA.json();
+        }
+        if (resO.ok) {
+          state.operadores = await resO.json();
         }
         state.supabaseConectado = true;
         guardarStorage();
@@ -392,13 +544,37 @@
     // =========================================================================
     // 5. ACCIONES CRUD SINCRONIZADAS CON SUPABASE
     // =========================================================================
-    function ejecutarLogin(e) {
+    async function ejecutarLogin(e) {
       if (e) e.preventDefault();
       const u = state.loginUsuario.trim().toLowerCase().split("@")[0];
       const p = state.loginClave.trim();
-      const cuenta = USUARIOS_RBAC[u];
-      if (!cuenta || (cuenta.clave.toLowerCase() !== p.toLowerCase() && cuenta.clave.replace("!", "").toLowerCase() !== p.toLowerCase())) {
-        state.loginError = "Credenciales inválidas. Verifique su usuario y contraseña institucional.";
+
+      // 1. Verificar contra lista de operadores_reniec en Supabase
+      if (state.operadores.length === 0) {
+        try {
+          const resOp = await fetch(`${SUPABASE_URL}/operadores_reniec?select=*`, { headers: SUPABASE_HEADERS });
+          if (resOp.ok) state.operadores = await resOp.json();
+        } catch (_) {}
+      }
+      const opRemoto = state.operadores.find(o => (o.username || "").toLowerCase() === u && o.activo !== false);
+      let cuenta = null;
+      if (opRemoto && (opRemoto.password === p || opRemoto.password.toLowerCase() === p.toLowerCase())) {
+        cuenta = {
+          usuario: opRemoto.username,
+          nombreCompleto: opRemoto.nombre_completo,
+          cargo: opRemoto.cargo,
+          sede: opRemoto.sede,
+          permisos: (opRemoto.permisos || "ROLE_VERIFICADOR,PADRON_LEER,TRAMITES_LEER").split(",").map(x => x.trim()).filter(Boolean)
+        };
+      } else {
+        const cuentaLocal = USUARIOS_RBAC[u];
+        if (cuentaLocal && (cuentaLocal.clave.toLowerCase() === p.toLowerCase() || cuentaLocal.clave.replace("!", "").toLowerCase() === p.toLowerCase())) {
+          cuenta = cuentaLocal;
+        }
+      }
+
+      if (!cuenta) {
+        state.loginError = "Credenciales inválidas o cuenta cesada. Verifique su usuario y contraseña institucional.";
         render();
         return;
       }
@@ -407,7 +583,8 @@
       state.loginUsuario = "";
       state.loginClave = "";
       guardarStorage();
-      sincronizarConSupabase();
+      await sincronizarConSupabase();
+      registrarAuditoria("LOGIN_WEB", "SESION", cuenta.usuario.toUpperCase(), `Inicio de sesión en Cloudflare Pages como ${cuenta.cargo}`);
     }
 
     function cerrarSesion() {
@@ -415,6 +592,22 @@
       state.tabActual = "inicio";
       guardarStorage();
       render();
+    }
+
+    function seleccionarFotoForm(file) {
+      if (!file) {
+        state.fotoPendienteFile = null;
+        state.fotoPendientePreview = null;
+        render();
+        return;
+      }
+      state.fotoPendienteFile = file;
+      const reader = new FileReader();
+      reader.onload = () => {
+        state.fotoPendientePreview = reader.result;
+        render();
+      };
+      reader.readAsDataURL(file);
     }
 
     async function guardarCiudadano(e) {
@@ -428,8 +621,9 @@
         mostrarModal("Validación de Padrón", "Complete los nombres, apellidos y dirección domiciliaria.");
         return;
       }
+      const dniLimpio = f.dni.trim();
       const payload = {
-        dni: f.dni.trim(),
+        dni: dniLimpio,
         nombres: f.nombres.trim(),
         apellido_paterno: f.apellidoPaterno.trim(),
         apellido_materno: f.apellidoMaterno.trim(),
@@ -446,12 +640,19 @@
             headers: SUPABASE_HEADERS,
             body: JSON.stringify(payload)
           });
+          await registrarAuditoria("ACTUALIZAR_PADRON", "CIUDADANO", dniLimpio, `Actualizó datos de ${payload.nombres} ${payload.apellido_paterno}`);
         } else {
           await fetch(`${SUPABASE_URL}/ciudadanos`, {
             method: "POST",
             headers: SUPABASE_HEADERS,
             body: JSON.stringify(payload)
           });
+          await registrarAuditoria("EMPADRONAR_CIUDADANO", "CIUDADANO", dniLimpio, `Empadronó a ${payload.nombres} ${payload.apellido_paterno}`);
+        }
+        if (state.fotoPendienteFile) {
+          await subirFotoCiudadano(dniLimpio, state.fotoPendienteFile);
+          state.fotoPendienteFile = null;
+          state.fotoPendientePreview = null;
         }
         state.mostrarFormCiudadano = false;
         state.editandoCiudadanoId = null;
@@ -459,6 +660,72 @@
       } catch (err) {
         mostrarModal("Error de Red", "No se pudo sincronizar con Supabase.");
       }
+    }
+
+    async function guardarOperador(e) {
+      e.preventDefault();
+      if (!tienePermiso("ROLE_ADMIN")) return;
+      const f = state.formOperador;
+      const cargoObj = CARGOS_RENIEC.find(c => c.codigoRol === f.cargoRol) || CARGOS_RENIEC[3];
+      const usernameLimpio = f.username.trim().toLowerCase().replace(/\s+/g, ".");
+      if (!usernameLimpio || !f.nombreCompleto.trim()) {
+        mostrarModal("Validación de Personal", "Ingrese el usuario y el nombre completo del operador.");
+        return;
+      }
+      const payload = {
+        username: usernameLimpio,
+        password: f.password.trim() || "Reniec2026!",
+        email: f.email.trim() || `${usernameLimpio}@reniec.gob.pe`,
+        telefono: f.telefono.trim() || null,
+        nombre_completo: f.nombreCompleto.trim(),
+        cargo: cargoObj.etiquetaCargo,
+        rol: cargoObj.codigoRol,
+        sede: f.sede.trim() || "Sede Regional RENIEC",
+        permisos: cargoObj.permisosCsv,
+        activo: true
+      };
+      try {
+        if (state.editandoOperadorId) {
+          const patchPayload = { ...payload };
+          if (!f.password.trim()) delete patchPayload.password;
+          await fetch(`${SUPABASE_URL}/operadores_reniec?id=eq.${state.editandoOperadorId}`, {
+            method: "PATCH",
+            headers: SUPABASE_HEADERS,
+            body: JSON.stringify(patchPayload)
+          });
+          await registrarAuditoria("ACTUALIZAR_OPERADOR", "PERSONAL", usernameLimpio, `Actualizó cargo de @${usernameLimpio} a ${cargoObj.etiquetaCargo}`);
+        } else {
+          await fetch(`${SUPABASE_URL}/operadores_reniec`, {
+            method: "POST",
+            headers: SUPABASE_HEADERS,
+            body: JSON.stringify(payload)
+          });
+          await registrarAuditoria("CREAR_OPERADOR", "PERSONAL", usernameLimpio, `Alta de operador @${usernameLimpio} con cargo ${cargoObj.etiquetaCargo}`);
+        }
+        state.mostrarFormOperador = false;
+        state.editandoOperadorId = null;
+        await sincronizarConSupabase();
+      } catch (err) {
+        mostrarModal("Error Admin", "No se pudo guardar el operador en Supabase.");
+      }
+    }
+
+    async function cambiarEstadoOperador(id, username, activoNuevo) {
+      if (!tienePermiso("ROLE_ADMIN")) return;
+      try {
+        await fetch(`${SUPABASE_URL}/operadores_reniec?id=eq.${id}`, {
+          method: "PATCH",
+          headers: SUPABASE_HEADERS,
+          body: JSON.stringify({ activo: activoNuevo })
+        });
+        await registrarAuditoria(
+          activoNuevo ? "REACTIVAR_OPERADOR" : "BAJA_OPERADOR",
+          "PERSONAL",
+          username,
+          `${activoNuevo ? 'Reactivación' : 'Baja lógica'} de operador @${username} desde Panel Admin Web`
+        );
+        await sincronizarConSupabase();
+      } catch (_) {}
     }
 
     async function eliminarCiudadano(id) {
@@ -686,7 +953,7 @@
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div class="p-4 rounded-2xl bg-[#231033] border border-[#3d1e57]">
               <div class="text-xs font-bold text-[#C6FF00]">Padrón DNI</div>
-              <div class="text-2xl font-extrabold mt-1">50,009</div>
+              <div class="text-2xl font-extrabold mt-1">${(state.totalCiudadanos || 50009).toLocaleString()}</div>
               <div class="text-xs text-[#C9B6D9]">En Supabase Cloud</div>
             </div>
             <div class="p-4 rounded-2xl bg-[#231033] border border-[#3d1e57]">
@@ -731,6 +998,27 @@
                 `;
               }).join('')}
             </div>
+          </div>
+
+          <div class="p-4 rounded-2xl bg-[#231033] border border-[#3d1e57] space-y-2.5">
+            <div class="flex justify-between items-center">
+              <span class="text-sm font-bold text-white">📡 Actividad Reciente y Auditoría en Vivo</span>
+              <button onclick="state.tabActual = 'reportes'; render();" class="text-xs font-extrabold text-[#C6FF00] underline">Ver Reportes →</button>
+            </div>
+            ${state.auditorias.length === 0 ? `<p class="text-xs text-[#C9B6D9]">Sincronizando eventos de auditoría desde Supabase...</p>` : `
+              <div class="space-y-2">
+                ${state.auditorias.slice(0, 6).map(a => `
+                  <div class="p-3 rounded-xl bg-[#160821] border border-[#3d1e57] flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                      <div class="text-xs font-extrabold text-[#C6FF00] break-words">${a.accion} • DNI ${a.referencia_dni || ''}</div>
+                      <div class="text-xs text-white/90 mt-0.5 break-words">${a.detalle || ''}</div>
+                      <div class="text-[11px] text-[#C9B6D9] mt-0.5">Canal: ${a.canal_telemetria || 'Supabase'} • ${a.dispositivo || ''}</div>
+                    </div>
+                    <span class="px-2 py-0.5 rounded-md bg-[#311747] text-[11px] font-bold text-[#40C4FF] whitespace-nowrap shrink-0">@${a.usuario}</span>
+                  </div>
+                `).join('')}
+              </div>
+            `}
           </div>
         </div>
       `;
@@ -796,6 +1084,25 @@
           ${state.mostrarFormCiudadano && puedeEscribir ? `
             <form onsubmit="guardarCiudadano(event)" class="p-4 rounded-2xl bg-[#231033] border border-[#C6FF00]/50 space-y-3">
               <h3 class="text-sm font-extrabold text-[#C6FF00]">${state.editandoCiudadanoId ? 'Editar Ficha Ciudadana en Supabase' : 'Empadronar Nuevo Ciudadano en Supabase'}</h3>
+              <div class="p-3 rounded-xl bg-[#311747]/70 border border-[#C6FF00]/40 flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                  ${state.fotoPendientePreview ? `
+                    <img src="${state.fotoPendientePreview}" class="w-12 h-14 rounded-lg object-cover border border-[#C6FF00]" alt="Vista previa" />
+                  ` : state.formCiudadano.dni && state.formCiudadano.dni.length === 8 ? `
+                    <img src="${urlFotoCiudadano(state.formCiudadano.dni)}" onerror="this.style.display='none'" class="w-12 h-14 rounded-lg object-cover border border-[#C6FF00]" alt="Foto nube" />
+                  ` : `
+                    <div class="w-12 h-14 rounded-lg bg-[#160821] border border-[#3d1e57] flex items-center justify-center text-xl">📸</div>
+                  `}
+                  <div>
+                    <div class="text-xs font-extrabold text-[#C6FF00]">Fotografía Biométrica (Supabase Storage)</div>
+                    <div class="text-[11px] text-[#C9B6D9]">${state.fotoPendienteFile ? 'Lista para subir: ' + state.fotoPendienteFile.name : 'Toma o selecciona una foto facial JPEG'}</div>
+                  </div>
+                </div>
+                <label class="px-3 py-1.5 rounded-xl bg-[#40C4FF] text-[#00263A] font-extrabold text-xs cursor-pointer">
+                  📷 Elegir / Tomar Foto
+                  <input type="file" accept="image/*" capture="user" class="hidden" onchange="seleccionarFotoForm(this.files[0])" />
+                </label>
+              </div>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <input type="text" maxlength="8" placeholder="DNI (8 dígitos)" value="${state.formCiudadano.dni}" oninput="state.formCiudadano.dni = this.value" class="px-3 py-2 rounded-xl bg-[#160821] border border-[#3d1e57] text-xs" required />
                 <input type="text" placeholder="Nombres Completos" value="${state.formCiudadano.nombres}" oninput="state.formCiudadano.nombres = this.value.toUpperCase()" class="px-3 py-2 rounded-xl bg-[#160821] border border-[#3d1e57] text-xs" required />
@@ -835,8 +1142,19 @@
 
               ${!state.dniReverso ? `
                 <div class="flex items-center gap-4">
-                  <div class="flex flex-col items-center gap-1.5">
-                    <div class="w-16 h-16 rounded-xl bg-[#231033] border border-[#C6FF00]/40 flex items-center justify-center text-3xl">👤</div>
+                  <div class="flex flex-col items-center gap-1.5 shrink-0">
+                    <div class="w-20 h-24 rounded-xl bg-[#231033] border-2 border-[#C6FF00]/60 overflow-hidden flex items-center justify-center relative">
+                      <img
+                        src="${urlFotoCiudadano(seleccionado.dni)}"
+                        alt="Foto DNI ${seleccionado.dni}"
+                        class="w-full h-full object-cover"
+                        onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                      />
+                      <div style="display:none" class="w-full h-full items-center justify-center text-3xl flex-col gap-0.5 text-[#C9B6D9]">
+                        <span>👤</span>
+                        <span class="text-[9px] font-bold">SIN FOTO</span>
+                      </div>
+                    </div>
                     <span class="px-2 py-0.5 rounded bg-amber-500/20 text-[#C6FF00] text-[10px] font-extrabold">⚡ CHIP NFC</span>
                   </div>
                   <div class="text-xs space-y-1 flex-1">
@@ -870,7 +1188,13 @@
 
               <div class="mt-3 pt-2 border-t border-white/10 flex flex-wrap items-center justify-between gap-2">
                 <span class="text-[11px] text-[#C6FF00] font-semibold">🔄 Toca la tarjeta para girar el DNIe 3.0 (Anverso / Reverso MRZ)</span>
-                <div class="flex gap-2" onclick="event.stopPropagation();">
+                <div class="flex flex-wrap gap-2" onclick="event.stopPropagation();">
+                  ${puedeEscribir ? `
+                    <label class="px-3 py-1 rounded-lg bg-[#40C4FF] text-[#00263A] font-extrabold text-xs cursor-pointer">
+                      ${state.subiendoFotoDni === seleccionado.dni ? 'Subiendo...' : '📸 Subir / Cambiar Foto'}
+                      <input type="file" accept="image/*" capture="user" class="hidden" onchange="subirFotoCiudadano('${seleccionado.dni}', this.files[0])" />
+                    </label>
+                  ` : ''}
                   ${puedeTramite ? `<button onclick="iniciarTramiteDesdeCiudadano(${seleccionado.id})" class="px-3 py-1 rounded-lg bg-[#C6FF00] text-[#14071E] font-extrabold text-xs">+ Iniciar Trámite</button>` : ''}
                 </div>
               </div>
@@ -884,11 +1208,17 @@
             ${filtrados.map(c => {
               const ub = buscarUbigeo(c.ubigeo);
               return `
-                <div onclick="state.ciudadanoSeleccionadoId = ${c.id}; render();" class="p-3.5 rounded-2xl bg-[#231033] hover:bg-[#311747] border ${seleccionado && seleccionado.id === c.id ? 'border-[#C6FF00]' : 'border-[#3d1e57]'} flex items-center justify-between gap-2 cursor-pointer transition">
-                  <div>
-                    <div class="text-sm font-extrabold text-white">DNI: ${c.dni} • ${c.nombres} ${c.apellidoPaterno} ${c.apellidoMaterno}</div>
-                    <div class="text-xs text-[#C6FF00] font-semibold">Ubigeo ${ub.codigo}: ${c.ubigeo}</div>
-                    <div class="text-[11px] text-[#C9B6D9]">Domicilio: ${c.direccion} | Nac: ${c.fechaNacimiento}</div>
+                <div onclick="state.ciudadanoSeleccionadoId = ${c.id}; render();" class="p-3.5 rounded-2xl bg-[#231033] hover:bg-[#311747] border ${seleccionado && seleccionado.id === c.id ? 'border-[#C6FF00]' : 'border-[#3d1e57]'} flex items-center justify-between gap-3 cursor-pointer transition">
+                  <div class="flex items-center gap-3 min-w-0 flex-1">
+                    <div class="w-11 h-12 rounded-xl bg-[#160821] border border-[#3d1e57] overflow-hidden shrink-0 flex items-center justify-center">
+                      <img src="${urlFotoCiudadano(c.dni)}" alt="" class="w-full h-full object-cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
+                      <span style="display:none" class="text-lg">🪪</span>
+                    </div>
+                    <div class="min-w-0">
+                      <div class="text-sm font-extrabold text-white break-words">DNI: ${c.dni} • ${c.nombres} ${c.apellidoPaterno} ${c.apellidoMaterno}</div>
+                      <div class="text-xs text-[#C6FF00] font-semibold break-words">Ubigeo ${ub.codigo}: ${c.ubigeo}</div>
+                      <div class="text-[11px] text-[#C9B6D9] break-words">Domicilio: ${c.direccion} | Nac: ${c.fechaNacimiento}</div>
+                    </div>
                   </div>
                   <div class="flex items-center gap-1" onclick="event.stopPropagation();">
                     ${puedeEscribir ? `<button onclick="state.editandoCiudadanoId = ${c.id}; state.formCiudadano = {...state.ciudadanos.find(x=>x.id===${c.id})}; state.mostrarFormCiudadano = true; render();" title="Editar" class="p-2 rounded-lg hover:bg-white/10">✏️</button>` : ''}
@@ -1016,8 +1346,153 @@
       `;
     }
 
+    function renderDonutChartSvg(titulo, mapaConteos) {
+      const colores = ["#F05922", "#00B4D8", "#10B981", "#F59E0B", "#EC4899", "#8B5CF6", "#3B82F6", "#14B8A6"];
+      const entradas = Object.entries(mapaConteos).sort((a, b) => b[1] - a[1]);
+      const total = entradas.reduce((acc, [, v]) => acc + v, 0);
+      if (total === 0) {
+        return `
+          <div class="p-4 rounded-2xl bg-[#231033] border border-[#3d1e57] text-center text-xs text-[#C9B6D9]">
+            Sin datos registrados para "${titulo}".
+          </div>
+        `;
+      }
+      const r = 46;
+      const circ = 2 * Math.PI * r;
+      let offsetAcum = 0;
+      const segmentos = entradas.slice(0, 8).map(([nombre, cant], idx) => {
+        const len = (cant / total) * circ;
+        const color = colores[idx % colores.length];
+        const seg = `<circle cx="60" cy="60" r="${r}" fill="transparent" stroke="${color}" stroke-width="18" stroke-dasharray="${len.toFixed(2)} ${circ.toFixed(2)}" stroke-dashoffset="${(-offsetAcum).toFixed(2)}" transform="rotate(-90 60 60)" />`;
+        offsetAcum += len;
+        return { nombre, cant, color, pct: Math.round((cant / total) * 100), svg: seg };
+      });
+
+      return `
+        <div class="p-4 rounded-2xl bg-[#231033] border border-[#3d1e57] space-y-3">
+          <div class="flex items-center justify-between">
+            <h4 class="text-sm font-extrabold text-[#C6FF00]">${titulo}</h4>
+            <span class="text-xs text-[#C9B6D9] font-bold">Total: ${total}</span>
+          </div>
+          <div class="flex flex-col sm:flex-row items-center gap-4">
+            <div class="relative w-32 h-32 shrink-0 flex items-center justify-center">
+              <svg viewBox="0 0 120 120" class="w-full h-full">
+                <circle cx="60" cy="60" r="${r}" fill="transparent" stroke="#311747" stroke-width="18" />
+                ${segmentos.map(s => s.svg).join("")}
+              </svg>
+              <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span class="text-xl font-black text-white">${total}</span>
+                <span class="text-[10px] text-[#C9B6D9] font-bold">REGISTROS</span>
+              </div>
+            </div>
+            <div class="flex-1 w-full space-y-1.5">
+              ${segmentos.map(s => `
+                <div class="flex items-center justify-between gap-2 text-xs">
+                  <div class="flex items-center gap-2 min-w-0">
+                    <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:${s.color}"></span>
+                    <span class="text-white font-semibold truncate">${s.nombre}</span>
+                  </div>
+                  <span class="text-[#40C4FF] font-extrabold whitespace-nowrap">${s.cant} (${s.pct}%)</span>
+                </div>
+              `).join("")}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderReportes() {
+      const operadoresNombres = ["TODOS", ...new Set(state.auditorias.map(a => a.usuario).filter(Boolean))];
+      const filtradas = state.filtroOperadorReporte === "TODOS"
+        ? state.auditorias
+        : state.auditorias.filter(a => a.usuario === state.filtroOperadorReporte);
+
+      const porOperador = {};
+      const porModulo = {};
+      const porAccion = {};
+      filtradas.forEach(a => {
+        const op = "@" + (a.usuario || "sistema");
+        porOperador[op] = (porOperador[op] || 0) + 1;
+        const ent = a.entidad || "GENERAL";
+        porModulo[ent] = (porModulo[ent] || 0) + 1;
+        const acc = a.accion || "EVENTO";
+        porAccion[acc] = (porAccion[acc] || 0) + 1;
+      });
+      const categoriasUnicas = Object.keys(porModulo).length;
+
+      return `
+        <div class="space-y-4">
+          <div class="p-4 rounded-2xl bg-[#231033] border border-[#3d1e57] space-y-3">
+            <div>
+              <h2 class="text-base sm:text-lg font-extrabold text-white">📊 Panel Estadístico y Reportes</h2>
+              <p class="text-xs text-[#C9B6D9]">Métricas de productividad, gráficos circulares y auditoría legal en tiempo real</p>
+            </div>
+            <div class="grid grid-cols-3 gap-2.5">
+              <div class="p-3 rounded-xl bg-[#160821] border border-[#3d1e57]">
+                <div class="text-[11px] font-bold text-[#C9B6D9]">Operaciones</div>
+                <div class="text-xl font-black text-[#C6FF00]">${filtradas.length}</div>
+                <div class="text-[10px] text-[#C9B6D9]">Acciones en BD</div>
+              </div>
+              <div class="p-3 rounded-xl bg-[#160821] border border-[#3d1e57]">
+                <div class="text-[11px] font-bold text-[#C9B6D9]">Operadores</div>
+                <div class="text-xl font-black text-[#C6FF00]">${state.operadores.length || 3}</div>
+                <div class="text-[10px] text-[#C9B6D9]">Activos/Cesados</div>
+              </div>
+              <div class="p-3 rounded-xl bg-[#160821] border border-[#3d1e57]">
+                <div class="text-[11px] font-bold text-[#C9B6D9]">Categorías</div>
+                <div class="text-xl font-black text-[#40C4FF]">${categoriasUnicas}</div>
+                <div class="text-[10px] text-[#C9B6D9]">Módulos RENIEC</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 p-1 rounded-2xl bg-[#231033] border border-[#3d1e57]">
+            <button onclick="state.tabReportesSub = 'graficos'; render();" class="py-2 rounded-xl text-xs font-extrabold transition ${state.tabReportesSub === 'graficos' ? 'bg-[#C6FF00] text-[#14071E]' : 'text-[#C9B6D9]'}">
+              📊 Gráficos Estadísticos
+            </button>
+            <button onclick="state.tabReportesSub = 'historial'; render();" class="py-2 rounded-xl text-xs font-extrabold transition ${state.tabReportesSub === 'historial' ? 'bg-[#C6FF00] text-[#14071E]' : 'text-[#C9B6D9]'}">
+              📋 Historial Inmutable
+            </button>
+          </div>
+
+          <div class="space-y-1.5">
+            <div class="text-xs font-bold text-[#C9B6D9]">Filtrar por Operador:</div>
+            <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+              ${operadoresNombres.map(op => `
+                <button onclick="state.filtroOperadorReporte = '${op}'; render();" class="px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap ${state.filtroOperadorReporte === op ? 'bg-[#40C4FF] text-[#00263A]' : 'bg-[#231033] text-white border border-[#3d1e57]'}">
+                  ${op === 'TODOS' ? 'Todos' : '@' + op}
+                </button>
+              `).join('')}
+            </div>
+          </div>
+
+          ${state.tabReportesSub === "graficos" ? `
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              ${renderDonutChartSvg("Acciones por Tipo de Operación", porAccion)}
+              ${renderDonutChartSvg("Distribución por Operador RENIEC", porOperador)}
+              ${renderDonutChartSvg("Módulos del Sistema Auditados", porModulo)}
+            </div>
+          ` : `
+            <div class="space-y-2.5">
+              ${filtradas.length === 0 ? `<p class="text-xs text-[#C9B6D9]">No hay registros de auditoría para este filtro.</p>` : filtradas.map(a => `
+                <div class="p-3.5 rounded-2xl bg-[#231033] border border-[#3d1e57] space-y-1">
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="text-xs font-extrabold text-[#C6FF00] break-words">${a.accion} • ${a.entidad} • DNI ${a.referencia_dni}</span>
+                    <span class="px-2 py-0.5 rounded-md bg-[#311747] text-[11px] font-bold text-[#40C4FF] whitespace-nowrap">@${a.usuario} (${a.rol})</span>
+                  </div>
+                  <div class="text-xs text-white">${a.detalle}</div>
+                  <div class="text-[11px] text-[#C9B6D9]">${a.canal_telemetria || ''} • ${a.dispositivo || ''} • ${(a.created_at || '').replace('T', ' ').slice(0, 19)}</div>
+                </div>
+              `).join('')}
+            </div>
+          `}
+        </div>
+      `;
+    }
+
     function renderPerfil() {
       const s = state.sesion;
+      const esAdmin = tienePermiso("ROLE_ADMIN");
       return `
         <div class="space-y-4">
           <div class="p-5 rounded-2xl bg-[#231033] border border-[#3d1e57] space-y-2.5">
@@ -1027,14 +1502,80 @@
             <p class="text-xs text-[#C9B6D9]">Usuario: @${s.usuario}</p>
             <p class="text-xs text-[#C9B6D9]">Cargo: ${s.cargo}</p>
             <p class="text-xs text-[#C9B6D9]">Sede asignada: ${s.sede}</p>
-            <div class="p-3 rounded-xl bg-[#4B125E] text-xs font-bold text-[#C6FF00]">
+            <div class="p-3 rounded-xl bg-[#4B125E] text-xs font-bold text-[#C6FF00] break-words">
               Permisos JWT: ${s.permisos.join(", ")}
             </div>
           </div>
 
+          ${esAdmin ? `
+            <div class="p-5 rounded-2xl bg-[#231033] border border-[#C6FF00]/40 space-y-3">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h3 class="text-base font-extrabold text-[#C6FF00]">👥 Gestión de Operadores y Cargos (Admin)</h3>
+                  <p class="text-xs text-[#C9B6D9]">Administra usuarios, roles RBAC y accesos sincronizados con la APK Android</p>
+                </div>
+                <button onclick="state.mostrarFormOperador = !state.mostrarFormOperador; state.editandoOperadorId = null; state.formOperador = { username: '', password: '', nombreCompleto: '', email: '', telefono: '', cargoRol: 'ROLE_BRIGADISTA', sede: 'Brigada Móvil UPeU - Lurigancho Ñaña' }; render();" class="px-3.5 py-2 rounded-xl bg-[#C6FF00] text-[#14071E] font-extrabold text-xs">
+                  + Nuevo Operador
+                </button>
+              </div>
+
+              ${state.mostrarFormOperador ? `
+                <form onsubmit="guardarOperador(event)" class="p-4 rounded-xl bg-[#160821] border border-[#5d2c85] space-y-2.5">
+                  <div class="text-xs font-extrabold text-[#40C4FF]">${state.editandoOperadorId ? 'Editar Cargo / Datos de Operador' : 'Registrar Nuevo Operador en Supabase'}</div>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <input type="text" placeholder="Usuario (ej: maria.perez)" value="${state.formOperador.username}" oninput="state.formOperador.username = this.value" class="px-3 py-2 rounded-xl bg-[#231033] border border-[#3d1e57] text-xs text-white" ${state.editandoOperadorId ? 'readonly' : 'required'} />
+                    <input type="text" placeholder="${state.editandoOperadorId ? 'Nueva clave (opcional)' : 'Contraseña de acceso'}" value="${state.formOperador.password}" oninput="state.formOperador.password = this.value" class="px-3 py-2 rounded-xl bg-[#231033] border border-[#3d1e57] text-xs text-white" ${state.editandoOperadorId ? '' : 'required'} />
+                    <input type="text" placeholder="Nombre completo" value="${state.formOperador.nombreCompleto}" oninput="state.formOperador.nombreCompleto = this.value" class="px-3 py-2 rounded-xl bg-[#231033] border border-[#3d1e57] text-xs text-white" required />
+                    <input type="text" placeholder="Sede asignada" value="${state.formOperador.sede}" oninput="state.formOperador.sede = this.value" class="px-3 py-2 rounded-xl bg-[#231033] border border-[#3d1e57] text-xs text-white" required />
+                    <input type="email" placeholder="Correo institucional (opcional)" value="${state.formOperador.email}" oninput="state.formOperador.email = this.value" class="px-3 py-2 rounded-xl bg-[#231033] border border-[#3d1e57] text-xs text-white" />
+                    <input type="text" placeholder="Teléfono (opcional)" value="${state.formOperador.telefono}" oninput="state.formOperador.telefono = this.value" class="px-3 py-2 rounded-xl bg-[#231033] border border-[#3d1e57] text-xs text-white" />
+                  </div>
+                  <div class="space-y-1">
+                    <div class="text-[11px] font-bold text-[#C9B6D9]">Cargo / Nivel de Acceso RBAC:</div>
+                    <div class="flex flex-wrap gap-1.5">
+                      ${CARGOS_RENIEC.map(c => `
+                        <button type="button" onclick="state.formOperador.cargoRol = '${c.codigoRol}'; render();" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold ${state.formOperador.cargoRol === c.codigoRol ? 'bg-[#C6FF00] text-[#14071E]' : 'bg-[#231033] text-white border border-[#3d1e57]'}">
+                          ${c.etiquetaCargo}
+                        </button>
+                      `).join('')}
+                    </div>
+                  </div>
+                  <div class="flex gap-2 pt-1">
+                    <button type="submit" class="flex-1 py-2 rounded-xl bg-[#C6FF00] text-[#14071E] font-extrabold text-xs">Guardar Operador</button>
+                    <button type="button" onclick="state.mostrarFormOperador = false; render();" class="flex-1 py-2 rounded-xl border border-[#C9B6D9]/40 text-xs font-bold">Cancelar</button>
+                  </div>
+                </form>
+              ` : ''}
+
+              <div class="space-y-2">
+                ${state.operadores.length === 0 ? `<p class="text-xs text-[#C9B6D9]">Sin operadores cargados. Presiona Sync en Inicio.</p>` : state.operadores.map(op => `
+                  <div class="p-3.5 rounded-xl bg-[#160821] border ${op.activo === false ? 'border-[#FF5252]/40 opacity-70' : 'border-[#3d1e57]'} flex flex-wrap items-center justify-between gap-2">
+                    <div class="min-w-0 flex-1">
+                      <div class="text-sm font-extrabold text-white break-words">
+                        ${op.nombre_completo} <span class="text-[#C6FF00]">(@${op.username})</span>
+                        ${op.activo === false ? `<span class="ml-1 px-1.5 py-0.5 rounded bg-[#5C1127] text-[#FFCDD2] text-[10px]">CESADO</span>` : `<span class="ml-1 px-1.5 py-0.5 rounded bg-emerald-900/60 text-emerald-300 text-[10px]">ACTIVO</span>`}
+                      </div>
+                      <div class="text-xs text-[#40C4FF] font-semibold">Rol: ${op.rol} • Sede: ${op.sede}</div>
+                      <div class="text-[11px] text-[#C9B6D9] break-words">Cargo: ${op.cargo}</div>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                      <button onclick="state.editandoOperadorId = ${op.id}; state.formOperador = { username: '${op.username}', password: '', nombreCompleto: '${(op.nombre_completo || '').replace(/'/g, '')}', email: '${op.email || ''}', telefono: '${op.telefono || ''}', cargoRol: '${op.rol}', sede: '${(op.sede || '').replace(/'/g, '')}' }; state.mostrarFormOperador = true; render();" class="px-2.5 py-1 rounded-lg bg-[#311747] text-xs font-bold text-[#C6FF00]" title="Editar cargo">✏️ Editar</button>
+                      ${op.username !== s.usuario ? (
+                        op.activo === false
+                          ? `<button onclick="cambiarEstadoOperador(${op.id}, '${op.username}', true)" class="px-2.5 py-1 rounded-lg bg-emerald-700 text-xs font-bold text-white">Reactivar</button>`
+                          : `<button onclick="cambiarEstadoOperador(${op.id}, '${op.username}', false)" class="px-2.5 py-1 rounded-lg bg-[#5C1127] text-xs font-bold text-[#FFCDD2]">🗑️ Cesar</button>`
+                      ) : ''}
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+
           <div class="p-5 rounded-2xl bg-[#231033] border border-[#3d1e57] space-y-2">
             <h3 class="text-base font-extrabold text-[#40C4FF]">☁️ Arquitectura Híbrida Supabase + Cloudflare + Android KMP</h3>
             <p class="text-xs text-[#C9B6D9]">• Endpoint Supabase: <span class="mono text-[#C6FF00]">vktclzpkebwvfbrvtpxo.supabase.co</span></p>
+            <p class="text-xs text-[#C9B6D9]">• Bucket Biométrico: <span class="mono text-[#C6FF00]">Supabase Storage / fotos-ciudadanos</span></p>
             <p class="text-xs text-[#C9B6D9]">• Plataforma Web: Cloudflare Pages Edge CDN</p>
             <p class="text-xs text-[#C9B6D9]">• App Móvil: Kotlin Multiplatform + Compose Multiplatform + SQLDelight Offline</p>
             <p class="text-xs text-[#C6FF00] font-bold">• Sincronización bidireccional en vivo entre tu celular y la web</p>
@@ -1049,7 +1590,7 @@
 
     function renderMainScaffold() {
       const s = state.sesion;
-      const titulos = { inicio: "Inicio", padron: "Padrón DNI", tramites: "Trámites", perfil: "Perfil" };
+      const titulos = { inicio: "Inicio", padron: "Padrón DNI", tramites: "Trámites", reportes: "Reportes", perfil: "Perfil" };
       return `
         <header class="topbar-gradient px-5 py-3.5 flex items-center justify-between shadow-md">
           <div class="flex items-center gap-3">
@@ -1069,14 +1610,16 @@
           ${state.tabActual === "inicio" ? renderInicio() : ""}
           ${state.tabActual === "padron" ? renderPadron() : ""}
           ${state.tabActual === "tramites" ? renderTramites() : ""}
+          ${state.tabActual === "reportes" ? renderReportes() : ""}
           ${state.tabActual === "perfil" ? renderPerfil() : ""}
         </main>
 
-        <nav class="bg-[#231033] border-t border-[#3d1e57] px-3 py-2 grid grid-cols-4 gap-2">
+        <nav class="bg-[#231033] border-t border-[#3d1e57] px-2 py-2 grid grid-cols-5 gap-1">
           ${[
             { id: "inicio", label: "Inicio", icon: "🏠" },
-            { id: "padron", label: "Padrón DNI", icon: "🪪" },
+            { id: "padron", label: "Padrón", icon: "🪪" },
             { id: "tramites", label: "Trámites", icon: "📋" },
+            { id: "reportes", label: "Reportes", icon: "📊" },
             { id: "perfil", label: "Perfil", icon: "👤" }
           ].map(item => `
             <button
