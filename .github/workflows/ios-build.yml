@@ -9,11 +9,16 @@ on:
 jobs:
   build-ios-ipa:
     name: Build RENIEC Movil iOS (.ipa)
-    runs-on: macos-15
+    runs-on: macos-26
 
     steps:
       - name: Descargar repositorio
         uses: actions/checkout@v4
+
+      - name: Seleccionar Xcode 26 para Compose Multiplatform 1.11
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '^26'
 
       - name: Configurar JDK 17 para Kotlin Multiplatform
         uses: actions/setup-java@v4
