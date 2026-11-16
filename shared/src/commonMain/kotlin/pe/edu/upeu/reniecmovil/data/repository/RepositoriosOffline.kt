@@ -1,8 +1,10 @@
 package pe.edu.upeu.reniecmovil.data.repository
 
 import kotlinx.coroutines.flow.Flow
+import pe.edu.upeu.reniecmovil.BiometriaSesionCache
 import pe.edu.upeu.reniecmovil.data.local.ReniecLocalDataSource
 import pe.edu.upeu.reniecmovil.data.remote.CiudadanoApi
+import pe.edu.upeu.reniecmovil.data.remote.FotoStorageApi
 import pe.edu.upeu.reniecmovil.data.remote.TramiteApi
 import pe.edu.upeu.reniecmovil.domain.model.Ciudadano
 import pe.edu.upeu.reniecmovil.domain.model.TramiteDni
@@ -11,7 +13,8 @@ import pe.edu.upeu.reniecmovil.domain.repository.TramiteRepository
 
 class CiudadanoRepositorioOffline(
     private val local: ReniecLocalDataSource,
-    private val remoto: CiudadanoApi
+    private val remoto: CiudadanoApi,
+    private val fotoStorageApi: FotoStorageApi? = null
 ) : CiudadanoRepository {
 
     override fun observarCiudadanos(): Flow<List<Ciudadano>> = local.observarCiudadanos()
@@ -43,13 +46,13 @@ class CiudadanoRepositorioOffline(
     override suspend fun registrar(ciudadano: Ciudadano): Ciudadano {
         val guardadoLocal = local.guardarCiudadanoPendiente(ciudadano)
         intentarSinFallar { sincronizar() }
-        return guardadoLocal
+        return local.buscarCiudadanoPorDni(ciudadano.dni) ?: guardadoLocal
     }
 
     override suspend fun actualizar(ciudadano: Ciudadano): Ciudadano {
         val guardadoLocal = local.guardarCiudadanoPendiente(ciudadano)
         intentarSinFallar { sincronizar() }
-        return guardadoLocal
+        return local.buscarCiudadanoPorDni(ciudadano.dni) ?: guardadoLocal
     }
 
     override suspend fun eliminar(id: Long) {
@@ -67,6 +70,9 @@ class CiudadanoRepositorioOffline(
                 remoto.actualizar(pendiente)
             }
             local.marcarCiudadanoSincronizado(pendiente.id, respuesta)
+            BiometriaSesionCache.bytesFotoPorDni[pendiente.dni]?.let { bytes ->
+                fotoStorageApi?.subirFotoCiudadano(pendiente.dni, bytes)
+            }
         }
         val listaServidor = remoto.listar()
         local.reemplazarCiudadanosSincronizados(listaServidor)

@@ -138,6 +138,8 @@ private fun ReniecMainScaffold(
     val rolUsuario = remember(sesion) {
         when {
             sesion.puede("ROLE_ADMIN") -> "ROLE_ADMIN"
+            sesion.puede("ROLE_EMPADRONADOR") -> "ROLE_EMPADRONADOR"
+            sesion.puede("ROLE_TRAMITES") -> "ROLE_TRAMITES"
             sesion.puede("ROLE_BRIGADISTA") -> "ROLE_BRIGADISTA"
             else -> "ROLE_VERIFICADOR"
         }
@@ -356,10 +358,11 @@ private fun ReniecMainScaffold(
                     Screen.Inicio -> InicioScreen(
                         sesion = sesion,
                         totalCiudadanos = ciudadanoState.ciudadanos.size,
+                        ciudadanos = ciudadanoState.ciudadanos,
                         totalPadronNacional = ciudadanoState.totalPadronNacional,
                         eventosAuditoria = ciudadanoState.eventosAuditoria,
                         tramites = tramiteState.tramites,
-                        avisoRed = tramiteState.avisoRed ?: ciudadanoState.avisoRed,
+                        avisoRed = ciudadanoState.avisoRed ?: tramiteState.avisoRed,
                         sincronizando = tramiteState.sincronizando || ciudadanoState.sincronizando,
                         onSincronizarTodo = {
                             ciudadanoViewModel.sincronizar()

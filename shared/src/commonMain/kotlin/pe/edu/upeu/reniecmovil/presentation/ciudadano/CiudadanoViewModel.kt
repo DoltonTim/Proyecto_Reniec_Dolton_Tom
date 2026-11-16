@@ -411,6 +411,7 @@ class CiudadanoViewModel(
                 donacionOrganos = form.donacionOrganos
             ).fold(
                 onSuccess = { guardado ->
+                    val quedoPendienteOffline = guardado.pendienteSync || guardado.id < 0
                     _uiState.update {
                         it.copy(
                             guardando = false,
@@ -419,7 +420,16 @@ class CiudadanoViewModel(
                             ciudadanoSeleccionado = guardado,
                             totalPadronNacional = if (eraEdicion) it.totalPadronNacional else it.totalPadronNacional + 1,
                             formulario = FormularioCiudadano(),
-                            mensajeExito = "Ciudadano ${guardado.nombreCompleto} (DNI ${guardado.dni}) sincronizado en el padrón"
+                            avisoRed = if (quedoPendienteOffline) {
+                                "Modo Brigada Offline (SQLDelight): ciudadano DNI ${guardado.dni} pendiente de sincronizar"
+                            } else {
+                                null
+                            },
+                            mensajeExito = if (quedoPendienteOffline) {
+                                "⏳ SIN INTERNET: ${guardado.nombreCompleto} (DNI ${guardado.dni}) guardado en SQLDelight Local (Pendiente de Sync)"
+                            } else {
+                                "✓ Ciudadano ${guardado.nombreCompleto} (DNI ${guardado.dni}) sincronizado en el padrón"
+                            }
                         )
                     }
                     registrarEventoTelemetriaOAuditoria(
