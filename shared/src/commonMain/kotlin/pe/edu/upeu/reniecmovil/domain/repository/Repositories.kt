@@ -32,4 +32,10 @@ interface AuthRepository {
     suspend fun cerrarSesion()
     suspend fun enviarCodigoRecuperacionEmail(correo: String)
     suspend fun verificarCodigoRecuperacionEmail(correo: String, codigoOtp: String): Sesion
+    suspend fun enviarCodigoRecuperacionValidado(usuario: String, correo: String, telefono: String) {
+        enviarCodigoRecuperacionEmail(correo)
+    }
+    suspend fun verificarYActualizarClave(usuario: String, correo: String, codigoOtp: String, nuevaClave: String): Sesion {
+        return verificarCodigoRecuperacionEmail(correo, codigoOtp)
+    }
 }

@@ -57,21 +57,16 @@ class SesionViewModel(
         }
     }
 
-    fun enviarCodigoCorreoGoogle(correo: String) {
-        val limpio = correo.trim()
-        if (limpio.isBlank() || !limpio.contains("@")) {
-            _estado.update { it.copy(errorOtp = "Por favor, ingresa un correo de Google válido (@gmail.com)") }
-            return
-        }
+    fun enviarCodigoCorreoGoogle(usuario: String, correo: String, telefono: String) {
         viewModelScope.launch {
             _estado.update { it.copy(enviandoOtp = true, errorOtp = null, mensajeOtp = null) }
-            iniciarSesionUseCase.enviarCodigoEmail(limpio)
+            iniciarSesionUseCase.enviarCodigoValidado(usuario, correo, telefono)
                 .onSuccess {
                     _estado.update {
                         it.copy(
                             enviandoOtp = false,
                             codigoOtpEnviado = true,
-                            mensajeOtp = "✓ ¡Correo real enviado por Supabase Auth a $limpio! Revisa tu bandeja de entrada o Spam e ingresa el código o haz clic en el enlace.",
+                            mensajeOtp = "✓ Identidad validada (Usuario + Teléfono). Código de 6 dígitos enviado a ${correo.trim()} — revisa tu Gmail o Spam.",
                             errorOtp = null
                         )
                     }
@@ -80,23 +75,23 @@ class SesionViewModel(
                     _estado.update {
                         it.copy(
                             enviandoOtp = false,
-                            errorOtp = "Supabase Auth: ${fallo.message ?: "Espera 60 segundos antes de solicitar otro código"}"
+                            errorOtp = fallo.message ?: "No se pudo enviar el código. Espera 60 segundos antes de reintentar."
                         )
                     }
                 }
         }
     }
 
-    fun verificarCodigoCorreoGoogle(correo: String, codigo: String, onExito: () -> Unit = {}) {
-        val limpio = correo.trim()
-        val otp = codigo.trim()
-        if (otp.length < 6) {
-            _estado.update { it.copy(errorOtp = "Ingresa el código numérico enviado a tu correo") }
-            return
-        }
+    fun verificarCodigoCorreoGoogle(
+        usuario: String,
+        correo: String,
+        codigo: String,
+        nuevaClave: String,
+        onExito: () -> Unit = {}
+    ) {
         viewModelScope.launch {
             _estado.update { it.copy(enviandoOtp = true, errorOtp = null) }
-            iniciarSesionUseCase.verificarCodigoEmail(limpio, otp)
+            iniciarSesionUseCase.verificarYCambiarClave(usuario, correo, codigo, nuevaClave)
                 .onSuccess { sesion ->
                     _estado.update {
                         it.copy(

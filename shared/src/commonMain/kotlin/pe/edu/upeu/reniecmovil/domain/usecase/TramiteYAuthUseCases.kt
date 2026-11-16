@@ -87,6 +87,14 @@ class IniciarSesionUseCase(
     suspend fun verificarCodigoEmail(correo: String, codigoOtp: String): Result<Sesion> = resultadoDe {
         authRepository.verificarCodigoRecuperacionEmail(correo, codigoOtp)
     }
+
+    suspend fun enviarCodigoValidado(usuario: String, correo: String, telefono: String): Result<Unit> = resultadoDe {
+        authRepository.enviarCodigoRecuperacionValidado(usuario, correo, telefono)
+    }
+
+    suspend fun verificarYCambiarClave(usuario: String, correo: String, codigoOtp: String, nuevaClave: String): Result<Sesion> = resultadoDe {
+        authRepository.verificarYActualizarClave(usuario, correo, codigoOtp, nuevaClave)
+    }
 }
 
 class ObtenerSesionGuardadaUseCase(

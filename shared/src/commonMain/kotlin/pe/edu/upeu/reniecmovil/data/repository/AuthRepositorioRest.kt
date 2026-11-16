@@ -3,6 +3,7 @@ package pe.edu.upeu.reniecmovil.data.repository
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
+import io.ktor.client.request.patch
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.encodeURLParameter
@@ -148,6 +149,138 @@ class AuthRepositorioRest(
     private fun guardarSesionCompleta(s: Sesion) {
         val permisosCsv = s.permisos.joinToString(",")
         almacen.guardarToken("${s.usuario}|${s.token}|${s.nombreCompleto}|${s.cargo}|${s.sede}|$permisosCsv")
+    }
+
+    @Serializable
+    private data class CambioClavePatchDto(val password: String)
+
+    @Serializable
+    private data class AuditoriaRecuperacionDto(
+        val usuario: String,
+        val rol: String,
+        val accion: String,
+        val entidad: String,
+        val referencia_dni: String,
+        val detalle: String,
+        val canal_telemetria: String = "Supabase Auth 2FA",
+        val dispositivo: String = "Android KMP"
+    )
+
+    private fun normalizarTelefono(tel: String?): String {
+        val soloDigitos = (tel ?: "").filter { it.isDigit() }
+        return if (soloDigitos.length >= 9) soloDigitos.takeLast(9) else soloDigitos
+    }
+
+    private suspend fun buscarOperadorParaRecuperacion(usuario: String): OperadorReniecDto? {
+        val u = usuario.trim().lowercase().substringBefore("@")
+        if (u.isBlank()) return null
+        return try {
+            cliente.get("operadores_reniec?username=eq.${u.encodeURLParameter()}&select=*&limit=1")
+                .body<List<OperadorReniecDto>>()
+                .firstOrNull()
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    override suspend fun enviarCodigoRecuperacionValidado(usuario: String, correo: String, telefono: String) {
+        val u = usuario.trim().lowercase().substringBefore("@")
+        val correoLimpio = correo.trim().lowercase()
+        val telNorm = normalizarTelefono(telefono)
+        require(u.isNotBlank()) { "Ingresa tu nombre de usuario (ej: admin, dolton, elena.arevalo)" }
+        require(correoLimpio.contains("@") && correoLimpio.contains(".")) {
+            "Ingresa un correo electrónico válido"
+        }
+        require(telNorm.length >= 6) { "Ingresa el número de celular registrado (mínimo 9 dígitos)" }
+
+        val op = buscarOperadorParaRecuperacion(u)
+            ?: throw IllegalArgumentException("El usuario @$u no existe en Supabase. Verifica tu usuario.")
+        if (!op.activo) {
+            throw IllegalArgumentException("La cuenta @$u está cesada o inactiva. Contacta al Administrador.")
+        }
+
+        // Si es admin/dolton y aún no tiene correo/teléfono en BD, respaldar con correo institucional del titular
+        val correoEsperado = op.email?.trim()?.lowercase()?.takeIf { it.isNotBlank() }
+            ?: if (u == "admin" || u == "dolton") "doltontomsistemas@gmail.com" else ""
+        val telEsperado = normalizarTelefono(op.telefono).takeIf { it.isNotBlank() }
+            ?: if (u == "admin" || u == "dolton") "930703759" else ""
+
+        if (correoEsperado.isBlank() || telEsperado.isBlank()) {
+            throw IllegalArgumentException(
+                "El operador @$u no tiene correo o teléfono configurado. Solicita al Administrador registrarlo en Perfil → Gestión de Operadores."
+            )
+        }
+        if (correoLimpio != correoEsperado || telNorm != telEsperado) {
+            throw IllegalArgumentException(
+                "Validación doble fallida: el correo o el teléfono no coincide con los datos registrados para @$u."
+            )
+        }
+
+        enviarCodigoRecuperacionEmail(correoLimpio)
+    }
+
+    override suspend fun verificarYActualizarClave(
+        usuario: String,
+        correo: String,
+        codigoOtp: String,
+        nuevaClave: String
+    ): Sesion {
+        val u = usuario.trim().lowercase().substringBefore("@")
+        val correoLimpio = correo.trim().lowercase()
+        val otp = codigoOtp.trim()
+        val claveLimpia = nuevaClave.trim()
+        require(otp.length >= 6) { "Ingresa el código numérico de 6 dígitos enviado a tu Gmail" }
+        require(claveLimpia.length >= 6) { "La nueva contraseña debe tener al menos 6 caracteres" }
+
+        try {
+            cliente.post("https://vktclzpkebwvfbrvtpxo.supabase.co/auth/v1/verify") {
+                setBody(SupabaseVerifyOtpRequest(email = correoLimpio, token = otp, type = "email"))
+            }
+        } catch (_: Exception) {
+            try {
+                cliente.post("https://vktclzpkebwvfbrvtpxo.supabase.co/auth/v1/verify") {
+                    setBody(SupabaseVerifyOtpRequest(email = correoLimpio, token = otp, type = "magiclink"))
+                }
+            } catch (_: Exception) {
+                throw IllegalArgumentException("El código de 6 dígitos es incorrecto o ha expirado")
+            }
+        }
+
+        // Actualizar la contraseña real del operador en operadores_reniec
+        try {
+            cliente.patch("operadores_reniec?username=eq.${u.encodeURLParameter()}") {
+                setBody(CambioClavePatchDto(password = claveLimpia))
+            }
+        } catch (_: Exception) {
+            throw IllegalArgumentException("Código válido, pero no se pudo guardar la nueva contraseña en Supabase.")
+        }
+
+        val op = buscarOperadorParaRecuperacion(u)
+        val sesion = op?.aSesion() ?: Sesion(
+            token = "jwt-supabase-google-otp-2026",
+            usuario = u,
+            nombreCompleto = "Operador @$u ($correoLimpio)",
+            cargo = "Operador RENIEC Verificado",
+            sede = "Sede RENIEC",
+            permisos = setOf("ROLE_BRIGADISTA", "PADRON_LEER", "PADRON_ESCRIBIR", "TRAMITES_LEER", "TRAMITES_ESCRIBIR")
+        )
+        try {
+            cliente.post("auditoria_reniec") {
+                setBody(
+                    AuditoriaRecuperacionDto(
+                        usuario = sesion.usuario,
+                        rol = op?.rol ?: "ROLE_OPERADOR",
+                        accion = "RECUPERACION_CLAVE_2FA",
+                        entidad = "SEGURIDAD",
+                        referencia_dni = sesion.usuario,
+                        detalle = "Restablecimiento de contraseña con validación doble (Teléfono + OTP Gmail $correoLimpio)"
+                    )
+                )
+            }
+        } catch (_: Exception) {}
+
+        guardarSesionCompleta(sesion)
+        return sesion
     }
 
     override suspend fun enviarCodigoRecuperacionEmail(correo: String) {
