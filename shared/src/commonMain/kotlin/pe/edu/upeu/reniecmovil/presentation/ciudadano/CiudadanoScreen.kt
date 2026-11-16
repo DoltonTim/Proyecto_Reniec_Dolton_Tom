@@ -151,6 +151,43 @@ fun CiudadanoScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
+            val pendientesLocal = state.ciudadanos.count { it.pendienteSync || it.id < 0 }
+            if (pendientesLocal > 0 || state.avisoRed != null) {
+                Surface(
+                    color = MaterialTheme.colorScheme.tertiaryContainer,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "⏳ MODO BRIGADA OFFLINE (SQLDelight)",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                            Text(
+                                text = if (pendientesLocal > 0) {
+                                    "$pendientesLocal ciudadano(s) guardados en SQLDelight local pendientes de subir a Supabase"
+                                } else {
+                                    state.avisoRed.orEmpty()
+                                },
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        FilledTonalButton(
+                            onClick = viewModel::sincronizar,
+                            enabled = !state.sincronizando
+                        ) {
+                            Text(if (state.sincronizando) "..." else "Sync")
+                        }
+                    }
+                }
+            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -347,6 +384,25 @@ fun CiudadanoScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
+                        val esPendienteLocal = ciudadano.pendienteSync || ciudadano.id < 0
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Surface(
+                                color = if (esPendienteLocal) Color(0xFFF59E0B).copy(alpha = 0.22f) else MaterialTheme.colorScheme.secondaryContainer,
+                                shape = RoundedCornerShape(6.dp)
+                            ) {
+                                Text(
+                                    text = if (esPendienteLocal) "⏳ PENDIENTE SYNC (SQLDelight)" else "☁️ SUPABASE CLOUD",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = if (esPendienteLocal) Color(0xFFFBBF24) else MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(3.dp))
                         Text(
                             text = "DNI: ${ciudadano.dni} • ${ciudadano.nombreCompleto}",
                             style = MaterialTheme.typography.bodyMedium,
@@ -461,12 +517,13 @@ private fun TarjetaDniElectronicoInteractivo(
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
+            val esPendienteLocal = ciudadano.pendienteSync || ciudadano.id < 0
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "REPÚBLICA DEL PERÚ • RENIEC",
                         style = MaterialTheme.typography.labelSmall,
@@ -483,17 +540,34 @@ private fun TarjetaDniElectronicoInteractivo(
                         fontWeight = FontWeight.Bold
                     )
                 }
-                Surface(
-                    color = MaterialTheme.colorScheme.primary,
-                    shape = RoundedCornerShape(8.dp)
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Text(
-                        text = "CUI ${ciudadano.dni}-$digitoVerificador",
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.ExtraBold,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                    )
+                    Surface(
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            text = "CUI ${ciudadano.dni}-$digitoVerificador",
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.ExtraBold,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                    Surface(
+                        color = if (esPendienteLocal) Color(0xFFF59E0B).copy(alpha = 0.25f) else MaterialTheme.colorScheme.secondaryContainer,
+                        shape = RoundedCornerShape(6.dp)
+                    ) {
+                        Text(
+                            text = if (esPendienteLocal) "⏳ PENDIENTE SYNC" else "☁️ SUPABASE",
+                            color = if (esPendienteLocal) Color(0xFFFBBF24) else MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.ExtraBold,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
                 }
             }
 

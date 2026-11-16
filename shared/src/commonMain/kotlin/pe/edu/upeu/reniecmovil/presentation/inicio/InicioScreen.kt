@@ -43,6 +43,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import pe.edu.upeu.reniecmovil.data.remote.dto.AuditoriaDto
+import pe.edu.upeu.reniecmovil.domain.model.Ciudadano
 import pe.edu.upeu.reniecmovil.domain.model.EstadoTramiteDni
 import pe.edu.upeu.reniecmovil.domain.model.Sesion
 import pe.edu.upeu.reniecmovil.domain.model.TipoTramiteDni
@@ -55,6 +56,7 @@ import pe.edu.upeu.reniecmovil.presentation.componentes.formatearMiles
 fun InicioScreen(
     sesion: Sesion,
     totalCiudadanos: Int,
+    ciudadanos: List<Ciudadano> = emptyList(),
     totalPadronNacional: Long = 50009L,
     eventosAuditoria: List<AuditoriaDto> = emptyList(),
     tramites: List<TramiteDni>,
@@ -65,13 +67,15 @@ fun InicioScreen(
     onNavegar: (Screen) -> Unit,
     onNuevoTramite: () -> Unit
 ) {
-    val pendientesSync = tramites.count { it.pendienteSync || it.id < 0 }
-    val sincronizados = tramites.size - pendientesSync
+    val ciudadanosPendientes = ciudadanos.count { it.pendienteSync || it.id < 0 }
+    val tramitesPendientes = tramites.count { it.pendienteSync || it.id < 0 }
+    val pendientesSync = ciudadanosPendientes + tramitesPendientes
+    val sincronizados = (tramites.size - tramitesPendientes) + (ciudadanos.size - ciudadanosPendientes)
     val atendidos = tramites.count { it.estado == EstadoTramiteDni.ATENDIDO.name }
     val tasaRecaudada = tramites.sumOf { TipoTramiteDni.desdeTexto(it.tipoTramite).costoSoles }
 
     val puedeVerRecaudacion = sesion.puede("RECAUDACION_VER") || sesion.puede("ROLE_ADMIN")
-    val puedeRegistrarTramite = sesion.puede("TRAMITES_ESCRIBIR")
+    val puedeRegistrarTramite = sesion.puede("TRAMITES_ESCRIBIR") || sesion.puede("PADRON_ESCRIBIR")
 
     val progresoAtencion by animateFloatAsState(
         targetValue = if (tramites.isEmpty()) 0f else atendidos.toFloat() / tramites.size.toFloat()
@@ -84,8 +88,9 @@ fun InicioScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
+        val enModoOfflineOPendiente = avisoRed != null || pendientesSync > 0
         Surface(
-            color = if (avisoRed == null) {
+            color = if (!enModoOfflineOPendiente) {
                 MaterialTheme.colorScheme.secondaryContainer
             } else {
                 MaterialTheme.colorScheme.tertiaryContainer
@@ -106,13 +111,13 @@ fun InicioScreen(
                     modifier = Modifier.weight(1f)
                 ) {
                     Icon(
-                        imageVector = if (avisoRed == null) Icons.Default.CloudDone else Icons.Default.CloudOff,
+                        imageVector = if (!enModoOfflineOPendiente) Icons.Default.CloudDone else Icons.Default.CloudOff,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary
                     )
                     Column {
                         Text(
-                            text = if (avisoRed == null) {
+                            text = if (!enModoOfflineOPendiente) {
                                 "CONECTADO A CENTRAL RENIEC (+50,000 EN SUPABASE)"
                             } else {
                                 "MODO BRIGADA OFFLINE (SQLDelight)"
@@ -121,7 +126,11 @@ fun InicioScreen(
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = avisoRed ?: "Padrón Nacional PIDE activo • Caché local: $totalCiudadanos fichas",
+                            text = when {
+                                pendientesSync > 0 -> "⏳ $pendientesSync registro(s) en SQLDelight local ($ciudadanosPendientes padrón • $tramitesPendientes trámites) listos para Sync"
+                                avisoRed != null -> avisoRed
+                                else -> "Padrón Nacional PIDE activo • Caché local: $totalCiudadanos fichas"
+                            },
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
@@ -222,7 +231,11 @@ fun InicioScreen(
             TarjetaMetrica(
                 titulo = "Offline Pend.",
                 valor = pendientesSync.toString(),
-                subtitulo = "En SQLDelight local",
+                subtitulo = if (pendientesSync > 0) {
+                    "$ciudadanosPendientes padrón • $tramitesPendientes trámites"
+                } else {
+                    "En SQLDelight local"
+                },
                 modifier = Modifier.weight(1f)
             )
         }

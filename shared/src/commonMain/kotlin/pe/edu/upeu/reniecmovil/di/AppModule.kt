@@ -45,7 +45,7 @@ val dataModule = module {
     single { AuditoriaApi(get()) }
     single { OperadorApi(get()) }
     single { FotoStorageApi(get()) }
-    single<CiudadanoRepository> { CiudadanoRepositorioOffline(get(), get()) }
+    single<CiudadanoRepository> { CiudadanoRepositorioOffline(get(), get(), get()) }
     single<TramiteRepository> { TramiteRepositorioOffline(get(), get()) }
     single<AuthRepository> { AuthRepositorioRest(get(), get()) }
 }
