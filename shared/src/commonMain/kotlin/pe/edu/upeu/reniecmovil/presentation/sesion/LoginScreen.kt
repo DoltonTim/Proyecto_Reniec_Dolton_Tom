@@ -76,8 +76,9 @@ fun LoginScreen(
     val estado by viewModel.estado.collectAsState()
     var mostrarClave by remember { mutableStateOf(false) }
     var mostrarDialogoGoogle by remember { mutableStateOf(false) }
-    var correoRecuperacion by remember { mutableStateOf("doltontomsistemas@gmail.com") }
-    var telefonoRecuperacion by remember { mutableStateOf("+51930703759") }
+    var usuarioRecuperacion by remember { mutableStateOf("") }
+    var correoRecuperacion by remember { mutableStateOf("") }
+    var telefonoRecuperacion by remember { mutableStateOf("") }
     var nuevaClaveRecuperacion by remember { mutableStateOf("") }
     var codigoOtp by remember { mutableStateOf("") }
 
@@ -433,24 +434,34 @@ fun LoginScreen(
                 }
             },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.verticalScroll(rememberScrollState())
+                ) {
                     Text(
-                        text = "Supabase Auth enviará un correo real a tu bandeja de Gmail con un código OTP / enlace de acceso:",
+                        text = "Validación doble: ingresa tu Usuario, Correo y Teléfono registrados por el Administrador para recibir tu código de 6 dígitos en Gmail:",
                         style = MaterialTheme.typography.bodySmall
+                    )
+                    OutlinedTextField(
+                        value = usuarioRecuperacion,
+                        onValueChange = { usuarioRecuperacion = it },
+                        label = { Text("1. Usuario institucional (ej: dolton, elena.arevalo)") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
                     )
                     OutlinedTextField(
                         value = correoRecuperacion,
                         onValueChange = { correoRecuperacion = it },
-                        label = { Text("1. Correo Registrado Único (@gmail.com)") },
-                        placeholder = { Text("doltontomsistemas@gmail.com") },
+                        label = { Text("2. Correo Registrado (@gmail.com)") },
+                        placeholder = { Text("usuario@gmail.com") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
                     OutlinedTextField(
                         value = telefonoRecuperacion,
                         onValueChange = { telefonoRecuperacion = it },
-                        label = { Text("2. Teléfono Celular Único (2FA)") },
-                        placeholder = { Text("+51930703759") },
+                        label = { Text("3. Teléfono Celular Registrado (2FA)") },
+                        placeholder = { Text("980160782") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -459,8 +470,16 @@ fun LoginScreen(
                         OutlinedTextField(
                             value = codigoOtp,
                             onValueChange = { codigoOtp = it.take(8) },
-                            label = { Text("Código recibido en tu Gmail (6 dígitos)") },
+                            label = { Text("Código de 6 dígitos recibido en Gmail") },
                             placeholder = { Text("Ej: 123456") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = nuevaClaveRecuperacion,
+                            onValueChange = { nuevaClaveRecuperacion = it },
+                            label = { Text("Nueva Contraseña (mín. 6 caracteres)") },
+                            visualTransformation = PasswordVisualTransformation(),
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -503,22 +522,33 @@ fun LoginScreen(
                     if (estado.codigoOtpEnviado && codigoOtp.length >= 6) {
                         Button(
                             onClick = {
-                                viewModel.verificarCodigoCorreoGoogle(correoRecuperacion, codigoOtp) {
+                                viewModel.verificarCodigoCorreoGoogle(
+                                    usuario = usuarioRecuperacion,
+                                    correo = correoRecuperacion,
+                                    codigo = codigoOtp,
+                                    nuevaClave = nuevaClaveRecuperacion
+                                ) {
                                     mostrarDialogoGoogle = false
                                     onLoginExitoso()
                                 }
                             },
                             enabled = !estado.enviandoOtp
                         ) {
-                            Text("Verificar Código", fontWeight = FontWeight.Bold)
+                            Text("Cambiar Clave", fontWeight = FontWeight.Bold)
                         }
                     }
                     Button(
-                        onClick = { viewModel.enviarCodigoCorreoGoogle(correoRecuperacion) },
+                        onClick = {
+                            viewModel.enviarCodigoCorreoGoogle(
+                                usuario = usuarioRecuperacion,
+                                correo = correoRecuperacion,
+                                telefono = telefonoRecuperacion
+                            )
+                        },
                         enabled = !estado.enviandoOtp
                     ) {
                         Text(
-                            text = if (estado.enviandoOtp) "Enviando..." else if (estado.codigoOtpEnviado) "Reenviar Correo" else "Enviar a Gmail",
+                            text = if (estado.enviandoOtp) "Validando..." else if (estado.codigoOtpEnviado) "Reenviar" else "Enviar Código",
                             fontWeight = FontWeight.Bold
                         )
                     }
