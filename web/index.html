@@ -1140,12 +1140,18 @@
 
           <div class="flex gap-2">
             <input
+              id="input-busqueda-padron"
               type="text"
               value="${state.filtroTexto}"
-              oninput="state.filtroTexto = this.value; render();"
-              placeholder="Buscar por DNI (8 dígitos), Apellidos o Distrito..."
+              oninput="actualizarBusquedaPadron(this.value)"
+              placeholder="Buscar por DNI (8 dígitos), Apellidos o Distrito en los +81,997 ciudadanos..."
               class="flex-1 px-4 py-2.5 rounded-xl bg-[#231033] border border-[#3d1e57] text-sm text-white outline-none focus:border-[#C6FF00]"
             />
+            ${state.filtroTexto ? `
+              <button type="button" onclick="state.filtroTexto = ''; render(); document.getElementById('input-busqueda-padron')?.focus();" class="px-3.5 py-2 rounded-xl bg-[#311747] text-[#C6FF00] text-xs font-extrabold border border-[#5d2c85]">
+                ✕ Limpiar
+              </button>
+            ` : ''}
           </div>
 
           ${state.mostrarFormCiudadano && puedeEscribir ? `
@@ -1349,6 +1355,22 @@
                 ${est}
               </button>
             `).join('')}
+          </div>
+
+          <div class="flex gap-2">
+            <input
+              id="input-busqueda-tramite"
+              type="text"
+              value="${state.filtroTextoTramite}"
+              oninput="state.filtroTextoTramite = this.value; render();"
+              placeholder="Buscar trámite por DNI, Nombre del ciudadano o Sede..."
+              class="flex-1 px-4 py-2 rounded-xl bg-[#231033] border border-[#3d1e57] text-xs sm:text-sm text-white outline-none focus:border-[#C6FF00]"
+            />
+            ${state.filtroTextoTramite ? `
+              <button type="button" onclick="state.filtroTextoTramite = ''; render(); document.getElementById('input-busqueda-tramite')?.focus();" class="px-3 py-2 rounded-xl bg-[#311747] text-[#C6FF00] text-xs font-extrabold border border-[#5d2c85]">
+                ✕ Limpiar
+              </button>
+            ` : ''}
           </div>
 
           ${state.mostrarFormTramite && puedeEscribir ? `
@@ -1701,9 +1723,69 @@
       `;
     }
 
+    let busquedaRemotaTimer = null;
+
+    function actualizarBusquedaPadron(valor) {
+      state.filtroTexto = valor;
+      render();
+      clearTimeout(busquedaRemotaTimer);
+      const q = (valor || "").trim();
+      if (q.length >= 2) {
+        busquedaRemotaTimer = setTimeout(async () => {
+          try {
+            const safe = encodeURIComponent(`*${q}*`);
+            const url = `${SUPABASE_URL}/ciudadanos?or=(dni.ilike.${safe},nombres.ilike.${safe},apellido_paterno.ilike.${safe},apellido_materno.ilike.${safe},ubigeo.ilike.${safe})&limit=50`;
+            const res = await fetch(url, { headers: SUPABASE_HEADERS });
+            if (res.ok) {
+              const data = await res.json();
+              if (data.length > 0) {
+                const nuevos = data.map(c => ({
+                  id: c.id,
+                  dni: c.dni,
+                  nombres: c.nombres,
+                  apellidoPaterno: c.apellido_paterno,
+                  apellidoMaterno: c.apellido_materno,
+                  fechaNacimiento: c.fecha_nacimiento,
+                  estadoCivil: c.estado_civil,
+                  ubigeo: c.ubigeo,
+                  direccion: c.direccion,
+                  donacionOrganos: c.donacion_organos
+                }));
+                const mapa = new Map();
+                [...nuevos, ...state.ciudadanos].forEach(item => mapa.set(item.id, item));
+                state.ciudadanos = Array.from(mapa.values());
+                render();
+              }
+            }
+          } catch (_) {}
+        }, 280);
+      }
+    }
+
     function render() {
       const root = document.getElementById("app-root");
+      const activeEl = document.activeElement;
+      const activeId = activeEl && activeEl.id ? activeEl.id : null;
+      const activePlaceholder = activeEl && activeEl.getAttribute ? activeEl.getAttribute("placeholder") : null;
+      const selStart = activeEl && typeof activeEl.selectionStart === "number" ? activeEl.selectionStart : null;
+      const selEnd = activeEl && typeof activeEl.selectionEnd === "number" ? activeEl.selectionEnd : null;
+
       root.innerHTML = state.sesion ? renderMainScaffold() : renderLogin();
+
+      let target = null;
+      if (activeId) {
+        target = document.getElementById(activeId);
+      } else if (activePlaceholder) {
+        target = root.querySelector(`input[placeholder="${activePlaceholder.replace(/"/g, '\\"')}"]`);
+      }
+      if (target) {
+        target.focus();
+        try {
+          if (selStart !== null && selEnd !== null && typeof target.setSelectionRange === "function") {
+            target.setSelectionRange(selStart, selEnd);
+          }
+        } catch (_) {}
+      }
     }
 
     if (window.location.hash.includes("access_token=")) {

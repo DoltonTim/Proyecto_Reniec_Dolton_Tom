@@ -5,8 +5,14 @@
 - **Docente**: Ing. Benjamin David Reyna Barreto
 - **Estudiante**: Dolton Tom Meza (Código: `201420294`)
 - **Repositorio Git**: https://github.com/DoltonTim/Proyecto_Reniec_Dolton_Tom.git
+- **Portal Web en Producción (Cloudflare Pages CI/CD)**: https://proyecto-reniec-dolton-tom.pages.dev/
+- **Subdominio Cloudflare Workers**: `doltontomsistemas.workers.dev` (Account ID: `084a135776cac11bb3088b734ca6e64d`)
+- **Infraestructura Cloud Backend (Supabase PostgreSQL + Auth + Storage)**:
+  - **Organización Supabase**: `DOLTON-RENIEC` (`DoltonTim's Project` · Región `sa-east-1` · Instancia `NANO`)
+  - **Project ID / Endpoint REST**: `https://vktclzpkebwvfbrvtpxo.supabase.co/rest/v1`
+  - **Tablas en Esquema `public` (7 tablas relacionales)**: `ciudadanos` (+81,997 registros), `tramites`, `operadores_reniec`, `ubigeos_reniec`, `biometria_afis`, `vouchers_banco_nacion` y `auditoria_reniec`.
 - **Ramas del Repositorio**:
-  - `master`: Rama principal de producción.
+  - `master`: Rama principal de producción (sincronizada con despliegues automáticos en Cloudflare Pages).
   - `Dolton-aportando`: Rama de desarrollo incremental por unidades y registro de aportes individuales.
 
 ---
@@ -55,6 +61,28 @@ Los registradores civiles y brigadas itinerantes del **RENIEC** realizan campañ
 - `PUT  /api/v1/tramites/{id}` → Actualiza el estado o datos de un trámite DNI.
 - `DELETE /api/v1/tramites/{id}` → Anula / elimina un trámite DNI.
 - **Swagger UI**: `http://localhost:8080/swagger-ui.html`
+
+---
+
+## 4.1 Despliegue Continuo (CI/CD) en Cloudflare Pages y Base de Datos Supabase Cloud
+
+- **Aplicación Web Desplegada (Cloudflare Workers & Pages)**:
+  - **URL Pública de Producción**: [https://proyecto-reniec-dolton-tom.pages.dev/](https://proyecto-reniec-dolton-tom.pages.dev/)
+  - **Integración Continua (GitHub → Cloudflare Pages)**: Conectado al repositorio `DoltonTim/Proyecto_Reniec_Dolton_Tom` con despliegues automáticos habilitados (*Automatic deployments enabled*) para las ramas `master` (Preview/Production) y `Dolton-aportando` (commits `d71d237`, `c33d762`, `9269a02`, `5130677`, `ae09666`, `80d80a4`, `41e7111`).
+  - **Código Fuente Web**: `web/index.html` (conectado en tiempo real a Supabase Cloud).
+- **Base de Datos y Servicios Cloud en Supabase (`DOLTON-RENIEC`)**:
+  - **Proyecto**: `DoltonTim's Project` (ID: `vktclzpkebwvfbrvtpxo`, Región: `sa-east-1`, 59 MB / 500 MB).
+  - **REST API**: `https://vktclzpkebwvfbrvtpxo.supabase.co/rest/v1`
+  - **Auth 2FA OTP**: `https://vktclzpkebwvfbrvtpxo.supabase.co/auth/v1`
+  - **Storage Biométrico**: `https://vktclzpkebwvfbrvtpxo.supabase.co/storage/v1/object` (Bucket: `fotos-ciudadanos`)
+  - **Esquema Relacional (`public` - 7 Tablas)**:
+    1. `ciudadanos` (Padrón nacional con +81,997 ciudadanos, DNI, nombres, apellidos, ubigeo, biometría facial/huella)
+    2. `tramites` (Solicitudes de trámites DNIe vinculadas por `dni_ciudadano` y `operador_username`)
+    3. `operadores_reniec` (Usuarios registradores, cargos, roles RBAC, permisos, email y teléfono)
+    4. `ubigeos_reniec` (Catálogo de sedes y ubigeos INEI/RENIEC)
+    5. `biometria_afis` (Registros de captura biométrica facial, huella dactilar y puntaje AFIS)
+    6. `vouchers_banco_nacion` (Recaudación de tasas del Banco de la Nación y hash QR)
+    7. `auditoria_reniec` (Trazabilidad legal por operador, rol, acción, entidad, dispositivo y telemetría)
 
 ---
 
