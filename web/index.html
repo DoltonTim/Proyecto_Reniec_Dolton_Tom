@@ -3,45 +3,73 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Reniec Móvil • Sistema Nacional de Identificación (UPeU + Supabase Cloud)</title>
+  <title>RENIEC Digital • Plataforma Nacional de Identificación y Registro Civil (Cloudflare + Supabase)</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
       --stori-top: #8C0B42;
       --stori-mid: #640D5F;
-      --stori-bg: #160821;
-      --stori-card: #231033;
-      --stori-card-alt: #311747;
+      --stori-bg: #11061B;
+      --stori-card: #1C0B2B;
+      --stori-card-alt: #28113B;
       --stori-lime: #C6FF00;
       --stori-cyan: #40C4FF;
     }
     body {
       font-family: 'Plus Jakarta Sans', sans-serif;
-      background-color: #0e0416;
-      color: #ffffff;
+      background-color: #0B0312;
+      color: #F8F5FA;
       margin: 0;
       padding: 0;
+      -webkit-font-smoothing: antialiased;
     }
     .mono { font-family: 'JetBrains Mono', monospace; }
     .login-gradient {
-      background: linear-gradient(180deg, #8C0B42 0%, #640D5F 40%, #1A0926 100%);
+      background: radial-gradient(circle at 20% 20%, rgba(140, 11, 66, 0.85) 0%, rgba(100, 13, 95, 0.75) 42%, rgba(17, 6, 27, 0.98) 100%);
     }
     .topbar-gradient {
-      background: linear-gradient(90deg, #8C0B42 0%, #640D5F 100%);
+      background: linear-gradient(90deg, #6E0834 0%, #4E0A4A 55%, #2D0A38 100%);
+    }
+    .glass-card {
+      background: linear-gradient(145deg, rgba(35, 16, 51, 0.92) 0%, rgba(24, 10, 36, 0.95) 100%);
+      border: 1px solid rgba(138, 79, 179, 0.25);
+      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(12px);
+    }
+    .glass-card-hover {
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .glass-card-hover:hover {
+      border-color: rgba(198, 255, 0, 0.45);
+      transform: translateY(-1px);
+      box-shadow: 0 14px 34px -10px rgba(0, 0, 0, 0.7), 0 0 20px -6px rgba(198, 255, 0, 0.14);
+    }
+    .dnie-guilloche {
+      background-image:
+        radial-gradient(circle at 85% 20%, rgba(198, 255, 0, 0.12) 0%, transparent 45%),
+        radial-gradient(circle at 15% 80%, rgba(64, 196, 255, 0.12) 0%, transparent 45%),
+        repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.025) 0px, rgba(255, 255, 255, 0.025) 1px, transparent 1px, transparent 8px),
+        linear-gradient(135deg, #3D0E4F 0%, #240933 55%, #160621 100%);
+    }
+    .grid-pattern {
+      background-size: 32px 32px;
+      background-image:
+        linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
     }
     .stori-peak {
       clip-path: polygon(0 28%, 43% 14%, 50% 12%, 57% 14%, 100% 28%, 100% 100%, 0% 100%);
     }
-    .input-underline {
-      background: transparent;
-      border: none;
-      border-bottom: 1.5px solid rgba(201, 182, 217, 0.45);
-      outline: none;
-      transition: border-color 0.2s;
+    .input-pro {
+      background-color: rgba(17, 6, 27, 0.85);
+      border: 1px solid rgba(138, 79, 179, 0.35);
+      transition: all 0.2s ease;
     }
-    .input-underline:focus {
-      border-bottom: 2px solid #C6FF00;
+    .input-pro:focus {
+      border-color: #C6FF00;
+      box-shadow: 0 0 0 3px rgba(198, 255, 0, 0.14);
+      outline: none;
     }
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -884,173 +912,195 @@
     }
 
     // =========================================================================
-    // 6. VISTAS (LOGIN + DASHBOARD + PADRÓN + TRÁMITES + PERFIL)
+    // 6. ICONOS VECTORIALES SVG & VISTAS EJECUTIVAS GOV-TECH
     // =========================================================================
+    const ICONS = {
+      home: `<svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10.5L12 3l9 7.5V20a1 1 0 01-1 1h-5.5v-6h-5v6H4a1 1 0 01-1-1v-9.5z"/></svg>`,
+      idCard: `<svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="11" r="2"/><path stroke-linecap="round" d="M13 10h5M13 14h4M6 16c.6-1.2 1.5-1.8 2.5-1.8s1.9.6 2.5 1.8"/></svg>`,
+      clipboard: `<svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>`,
+      chart: `<svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 3v18M6 13v8M16 8v13M21 11v10"/></svg>`,
+      shield: `<svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3l7 3v6c0 5-3.5 8.5-7 9-3.5-.5-7-4-7-9V6l7-3z"/></svg>`,
+      sync: `<svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h5M20 20v-5h-5M4.5 9A8 8 0 0118.3 6.3L20 9M19.5 15a8 8 0 01-13.8 2.7L4 15"/></svg>`,
+      search: `<svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path stroke-linecap="round" d="M20 20l-3.5-3.5"/></svg>`,
+      logout: `<svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>`,
+      building: `<svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1m4 0h1m-6 4h1m4 0h1m-3 8v-4"/></svg>`,
+      checkBadge: `<svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`
+    };
+
     function renderLogin() {
       return `
-        <div class="flex-1 min-h-screen flex flex-col lg:flex-row bg-[#12061c]">
+        <div class="flex-1 min-h-screen flex flex-col lg:flex-row bg-[#0B0312] grid-pattern">
           <!-- Panel Izquierdo Institucional (Web Portal Hero) -->
-          <div class="hidden lg:flex lg:w-7/12 xl:w-3/5 login-gradient relative flex-col justify-between p-12 overflow-hidden border-r border-[#3d1e57]">
-            <div class="absolute inset-0 bg-[#1A0926]/55 stori-peak pointer-events-none"></div>
+          <div class="hidden lg:flex lg:w-7/12 xl:w-3/5 login-gradient relative flex-col justify-between p-12 xl:p-16 overflow-hidden border-r border-[#3d1e57]/70">
+            <div class="absolute inset-0 bg-[#14071E]/60 stori-peak pointer-events-none"></div>
 
-            <!-- Top Gov Banner -->
+            <!-- Top Gov Header -->
             <div class="relative z-10 flex items-center justify-between">
               <div class="flex items-center gap-4">
-                <div class="w-12 h-12 rotate-45 border-2 border-white rounded-xl p-1.5 flex items-center justify-center shadow-lg bg-[#8C0B42]/40">
-                  <div class="w-full h-full border border-[#C6FF00] rounded-md flex items-center justify-center">
-                    <span class="-rotate-45 text-white text-lg">🪪</span>
-                  </div>
+                <div class="w-12 h-12 rounded-2xl bg-[#1C0B2B] border border-[#C6FF00]/60 flex items-center justify-center shadow-xl text-[#C6FF00]">
+                  ${ICONS.idCard}
                 </div>
                 <div>
-                  <div class="text-[11px] font-extrabold tracking-widest uppercase text-[#C6FF00]">República del Perú • PIDE / RENIEC</div>
-                  <h1 class="text-2xl font-extrabold tracking-tight text-white">Portal Web Nacional RENIEC</h1>
+                  <div class="flex items-center gap-2">
+                    <span class="px-2 py-0.5 rounded bg-[#8C0B42] text-white text-[10px] font-black tracking-wider">PERÚ</span>
+                    <span class="text-[11px] font-bold tracking-widest uppercase text-[#C6FF00]">Plataforma PIDE • RENIEC</span>
+                  </div>
+                  <h1 class="text-xl font-black tracking-tight text-white mt-0.5">Sistema Nacional de Identificación Digital</h1>
                 </div>
               </div>
-              <span class="px-3.5 py-1.5 rounded-full bg-black/30 border border-[#C6FF00]/40 text-xs font-extrabold text-[#C6FF00]">
-                ⚡ Supabase Cloud + Cloudflare Pages
-              </span>
+              <div class="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#14071E]/80 border border-[#C6FF00]/35 text-xs font-bold text-[#C6FF00] shadow-inner">
+                <span class="w-2 h-2 rounded-full bg-[#C6FF00] animate-pulse"></span>
+                <span>Supabase Cloud PostgreSQL</span>
+              </div>
             </div>
 
-            <!-- Centro con Mascota y Características del Portal Web -->
-            <div class="relative z-10 my-auto grid grid-cols-1 xl:grid-cols-12 gap-8 items-center py-8">
+            <!-- Hero Central con Mascota y Arquitectura -->
+            <div class="relative z-10 my-auto grid grid-cols-1 xl:grid-cols-12 gap-10 items-center py-8">
               <div class="xl:col-span-5 flex flex-col items-center">
-                <img src="./mascota-reniec.png" alt="Mascota Oficial 3D RENIEC" class="w-64 h-64 object-contain drop-shadow-2xl" />
-              </div>
-              <div class="xl:col-span-7 space-y-4">
-                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#C6FF00]/15 border border-[#C6FF00]/40 text-[#C6FF00] text-xs font-extrabold">
-                  🌐 Sistema Integrado Web &amp; Android KMP
+                <div class="relative">
+                  <div class="absolute -inset-4 rounded-full bg-[#C6FF00]/10 blur-2xl pointer-events-none"></div>
+                  <img src="./mascota-reniec.png" alt="Mascota Oficial 3D RENIEC" class="relative w-64 h-64 object-contain drop-shadow-2xl" />
                 </div>
-                <h2 class="text-3xl xl:text-4xl font-black text-white leading-tight">
-                  Plataforma Nacional de Identificación y Registro Civil
+              </div>
+              <div class="xl:col-span-7 space-y-5">
+                <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#1C0B2B]/90 border border-[#40C4FF]/40 text-[#40C4FF] text-xs font-extrabold tracking-wide">
+                  <span>ARQUITECTURA CLOUDFLARE EDGE + ANDROID KMP</span>
+                </div>
+                <h2 class="text-3xl xl:text-4xl font-black text-white leading-tight tracking-tight">
+                  Portal Corporativo de Padrón Electoral y Registro Civil
                 </h2>
-                <p class="text-sm text-white/85 leading-relaxed">
-                  Consulte el Padrón Nacional de +81,997 ciudadanos en tiempo real, gestione trámites de DNIe 3.0 por Ubigeo INEI/RENIEC y supervise la auditoría biométrica conectada con las brigadas móviles Android.
+                <p class="text-sm text-[#D6C7E3] leading-relaxed">
+                  Plataforma gubernamental unificada para la consulta del Padrón Nacional (+81,997 registros activos), emisión y seguimiento de trámites de DNIe 3.0 por jurisdicción Ubigeo INEI, y auditoría criptográfica en tiempo real.
                 </p>
-                <div class="grid grid-cols-3 gap-3 pt-2">
-                  <div class="p-3.5 rounded-2xl bg-[#231033]/85 border border-[#5d2c85]">
-                    <div class="text-xs font-bold text-[#C6FF00]">Padrón Cloud</div>
-                    <div class="text-xl font-black text-white mt-0.5">+81,997</div>
-                    <div class="text-[11px] text-[#C9B6D9]">Ciudadanos DNIe</div>
+                <div class="grid grid-cols-3 gap-3.5 pt-2">
+                  <div class="p-4 rounded-2xl glass-card">
+                    <div class="text-[11px] font-bold uppercase tracking-wider text-[#C6FF00]">Padrón Nacional</div>
+                    <div class="text-2xl font-black text-white mt-1 mono">+81,997</div>
+                    <div class="text-[11px] text-[#C9B6D9] mt-0.5">Ciudadanos sincronizados</div>
                   </div>
-                  <div class="p-3.5 rounded-2xl bg-[#231033]/85 border border-[#5d2c85]">
-                    <div class="text-xs font-bold text-[#40C4FF]">Cobertura</div>
-                    <div class="text-xl font-black text-white mt-0.5">10 Sedes</div>
-                    <div class="text-[11px] text-[#C9B6D9]">Ubigeo Nacional</div>
+                  <div class="p-4 rounded-2xl glass-card">
+                    <div class="text-[11px] font-bold uppercase tracking-wider text-[#40C4FF]">Jurisdicciones</div>
+                    <div class="text-2xl font-black text-white mt-1 mono">10 Sedes</div>
+                    <div class="text-[11px] text-[#C9B6D9] mt-0.5">Catálogo Ubigeo INEI</div>
                   </div>
-                  <div class="p-3.5 rounded-2xl bg-[#231033]/85 border border-[#5d2c85]">
-                    <div class="text-xs font-bold text-[#C6FF00]">Seguridad</div>
-                    <div class="text-xl font-black text-white mt-0.5">2FA + RBAC</div>
-                    <div class="text-[11px] text-[#C9B6D9]">OTP Gmail / JWT</div>
+                  <div class="p-4 rounded-2xl glass-card">
+                    <div class="text-[11px] font-bold uppercase tracking-wider text-[#C6FF00]">Ciberseguridad</div>
+                    <div class="text-2xl font-black text-white mt-1 mono">RBAC 2FA</div>
+                    <div class="text-[11px] text-[#C9B6D9] mt-0.5">JWT + OTP Google Auth</div>
                   </div>
                 </div>
               </div>
             </div>
 
             <!-- Footer Institucional Izquierdo -->
-            <div class="relative z-10 flex items-center justify-between text-xs text-white/70 border-t border-white/10 pt-4">
-              <span>Universidad Peruana Unión (UPeU) • Ingeniería de Sistemas</span>
-              <span>Sincronización Bidireccional PostgreSQL REST v1</span>
+            <div class="relative z-10 flex items-center justify-between text-xs text-[#C9B6D9]/80 border-t border-white/10 pt-5">
+              <span>Universidad Peruana Unión (UPeU) • Facultad de Ingeniería y Arquitectura</span>
+              <span class="mono text-[11px] text-[#C6FF00]/90">REST API v1 • TLS 1.3 Encrypted</span>
             </div>
           </div>
 
-          <!-- Panel Derecho: Formulario de Acceso Institucional -->
-          <div class="flex-1 flex flex-col justify-between p-6 sm:p-12 bg-[#160821] relative">
+          <!-- Panel Derecho: Formulario de Autenticación Ejecutiva -->
+          <div class="flex-1 flex flex-col justify-between p-6 sm:p-12 bg-[#11061B] relative">
             <div class="flex lg:hidden items-center justify-between pb-4 border-b border-[#3d1e57]">
               <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rotate-45 border-2 border-[#C6FF00] rounded-lg flex items-center justify-center">
-                  <span class="-rotate-45 text-sm">🪪</span>
+                <div class="w-9 h-9 rounded-xl bg-[#1C0B2B] border border-[#C6FF00] flex items-center justify-center text-[#C6FF00]">
+                  ${ICONS.idCard}
                 </div>
                 <div>
-                  <h1 class="text-lg font-extrabold text-white">Portal Web RENIEC</h1>
-                  <p class="text-[11px] text-[#C9B6D9]">Red Nacional de Identificación</p>
+                  <h1 class="text-base font-black text-white">RENIEC Digital Web</h1>
+                  <p class="text-[11px] text-[#C9B6D9]">Sistema Nacional de Identificación</p>
                 </div>
               </div>
-              <span class="px-2.5 py-1 rounded-full bg-[#231033] border border-[#5d2c85] text-[10px] font-extrabold text-[#C6FF00]">ONLINE</span>
+              <span class="px-2.5 py-1 rounded-full bg-[#231033] border border-[#C6FF00]/40 text-[10px] font-extrabold text-[#C6FF00]">ONLINE</span>
             </div>
 
-            <form onsubmit="ejecutarLogin(event)" class="w-full max-w-md mx-auto my-auto py-8 space-y-5">
-              <div class="flex lg:hidden justify-center mb-2">
-                <img src="./mascota-reniec.png" alt="Mascota Oficial 3D RENIEC" class="w-36 h-36 object-contain drop-shadow-2xl" />
-              </div>
-
-              <div>
-                <span class="px-3 py-1 rounded-full bg-[#2E1647] border border-[#5d2c85] text-[11px] font-extrabold text-[#C6FF00]">
-                  🔐 Intranet de Operadores y Registradores
-                </span>
-                <h2 class="text-2xl sm:text-3xl font-extrabold text-white mt-3">Iniciar Sesión</h2>
-                <p class="text-xs sm:text-sm text-[#C9B6D9] mt-1">
-                  Ingresa tus credenciales institucionales para acceder al Sistema Web RENIEC.
-                </p>
-              </div>
-
-              <div class="space-y-4 pt-2">
-                <div>
-                  <label class="block text-xs font-bold text-[#C9B6D9] mb-1.5">USUARIO INSTITUCIONAL</label>
-                  <input
-                    type="text"
-                    value="${state.loginUsuario}"
-                    oninput="state.loginUsuario = this.value"
-                    placeholder="ej: admin, dolton, elena.arevalo@reniec.gob.pe"
-                    class="w-full px-4 py-3 rounded-xl bg-[#231033] border border-[#3d1e57] text-sm text-white placeholder-[#BBA8C9]/50 outline-none focus:border-[#C6FF00] transition"
-                    required
-                  />
+            <div class="w-full max-w-md mx-auto my-auto py-6">
+              <form onsubmit="ejecutarLogin(event)" class="p-7 sm:p-8 rounded-3xl glass-card space-y-5">
+                <div class="flex lg:hidden justify-center mb-1">
+                  <img src="./mascota-reniec.png" alt="Mascota Oficial 3D RENIEC" class="w-28 h-28 object-contain drop-shadow-2xl" />
                 </div>
 
-                <div>
-                  <div class="flex items-center justify-between mb-1.5">
-                    <label class="block text-xs font-bold text-[#C9B6D9]">CONTRASEÑA</label>
-                    <button type="button" onclick="abrirRecuperacionGoogle()" class="text-xs font-bold text-[#C6FF00] hover:underline">
-                      ¿Olvidaste tu contraseña?
-                    </button>
+                <div class="space-y-1.5">
+                  <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#2A123D] border border-[#5d2c85] text-[11px] font-extrabold text-[#C6FF00]">
+                    ${ICONS.shield}
+                    <span>ACCESO OFICIAL DE OPERADORES</span>
                   </div>
-                  <div class="flex items-center rounded-xl bg-[#231033] border border-[#3d1e57] focus-within:border-[#C6FF00] px-4">
+                  <h2 class="text-2xl font-black text-white tracking-tight pt-1">Autenticación Institucional</h2>
+                  <p class="text-xs text-[#C9B6D9] leading-relaxed">
+                    Ingrese su credencial asignada por la Jefatura Regional de Registro Civil.
+                  </p>
+                </div>
+
+                <div class="space-y-4 pt-1">
+                  <div>
+                    <label class="block text-[11px] font-extrabold uppercase tracking-wider text-[#C9B6D9] mb-1.5">Usuario / Correo Institucional</label>
                     <input
-                      type="${state.mostrarClave ? 'text' : 'password'}"
-                      value="${state.loginClave}"
-                      oninput="state.loginClave = this.value"
-                      placeholder="••••••••••••"
-                      class="w-full py-3 text-sm text-white placeholder-[#BBA8C9]/50 bg-transparent outline-none"
+                      type="text"
+                      value="${state.loginUsuario}"
+                      oninput="state.loginUsuario = this.value"
+                      placeholder="ej: admin, dolton, elena.arevalo"
+                      class="w-full px-4 py-3 rounded-xl input-pro text-sm text-white placeholder-[#BBA8C9]/45"
                       required
                     />
-                    <button type="button" onclick="state.mostrarClave = !state.mostrarClave; render();" class="text-xs text-[#BBA8C9] pl-2">
-                      ${state.mostrarClave ? '🙈' : '👁️'}
-                    </button>
+                  </div>
+
+                  <div>
+                    <div class="flex items-center justify-between mb-1.5">
+                      <label class="block text-[11px] font-extrabold uppercase tracking-wider text-[#C9B6D9]">Clave de Seguridad</label>
+                      <button type="button" onclick="abrirRecuperacionGoogle()" class="text-xs font-bold text-[#C6FF00] hover:underline">
+                        ¿Olvidó su contraseña?
+                      </button>
+                    </div>
+                    <div class="flex items-center rounded-xl input-pro px-4">
+                      <input
+                        type="${state.mostrarClave ? 'text' : 'password'}"
+                        value="${state.loginClave}"
+                        oninput="state.loginClave = this.value"
+                        placeholder="••••••••••••"
+                        class="w-full py-3 text-sm text-white placeholder-[#BBA8C9]/45 bg-transparent outline-none"
+                        required
+                      />
+                      <button type="button" onclick="state.mostrarClave = !state.mostrarClave; render();" class="text-xs font-bold text-[#C9B6D9] hover:text-white pl-2">
+                        ${state.mostrarClave ? 'OCULTAR' : 'VER'}
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              ${state.loginError ? `
-                <div class="p-3.5 rounded-xl bg-[#4A1228] border border-[#FF5252] text-xs text-[#FFCDD2] font-semibold">
-                  ${state.loginError}
+                ${state.loginError ? `
+                  <div class="p-3.5 rounded-xl bg-[#4A1228]/90 border border-[#FF5252] text-xs text-[#FFCDD2] font-semibold">
+                    ${state.loginError}
+                  </div>
+                ` : ''}
+
+                <button type="submit" class="w-full h-12 rounded-xl bg-[#C6FF00] hover:bg-[#d4ff33] text-[#14071E] font-black text-sm tracking-wide shadow-lg transition flex items-center justify-center gap-2">
+                  <span>INGRESAR AL SISTEMA WEB</span>
+                  <span>→</span>
+                </button>
+
+                <div class="flex items-center justify-center gap-3">
+                  <div class="h-px flex-1 bg-[#3d1e57]"></div>
+                  <span class="text-[11px] text-[#BBA8C9] font-semibold uppercase tracking-wider">Verificación 2FA</span>
+                  <div class="h-px flex-1 bg-[#3d1e57]"></div>
                 </div>
-              ` : ''}
 
-              <button type="submit" class="w-full h-12 rounded-xl bg-[#C6FF00] hover:bg-[#d4ff33] text-[#14071E] font-extrabold text-sm sm:text-base shadow-lg transition">
-                Ingresar al Portal Web →
-              </button>
+                <button
+                  type="button"
+                  onclick="abrirRecuperacionGoogle()"
+                  class="w-full h-11 rounded-xl bg-[#1A0A28] border border-[#5d2c85] flex items-center justify-center gap-2.5 text-xs font-bold text-white hover:border-[#C6FF00]/60 transition"
+                >
+                  <span class="w-5 h-5 rounded-full bg-white text-[#EA4335] font-black text-xs flex items-center justify-center shadow">G</span>
+                  <span>Recuperación con Doble Factor (OTP Gmail)</span>
+                </button>
+              </form>
 
-              <div class="flex items-center justify-center gap-3 my-4">
-                <div class="h-px flex-1 bg-[#3d1e57]"></div>
-                <span class="text-xs text-[#BBA8C9] font-medium">Recuperación 2FA</span>
-                <div class="h-px flex-1 bg-[#3d1e57]"></div>
-              </div>
-
-              <button
-                type="button"
-                onclick="abrirRecuperacionGoogle()"
-                class="w-full h-11 rounded-xl bg-[#231033] border border-[#5d2c85] flex items-center justify-center gap-2.5 text-xs sm:text-sm font-bold text-white hover:bg-[#311747] transition"
-              >
-                <span class="w-5 h-5 rounded-full bg-white text-[#EA4335] font-extrabold text-xs flex items-center justify-center shadow">G</span>
-                <span>Recuperar Acceso con Google OTP</span>
-              </button>
-
-              <p onclick="mostrarModal('Alta de Operadores RENIEC', 'El alta de nuevos operadores y brigadistas es gestionada exclusivamente por la Jefatura Regional de Registro Civil.')" class="text-center text-xs text-[#BBA8C9] pt-2 cursor-pointer">
-                ¿No tienes cuenta activa? <span class="text-white font-extrabold underline">Solicitar acceso al Administrador</span>
+              <p onclick="mostrarModal('Alta de Operadores RENIEC', 'El alta de nuevos operadores y brigadistas es gestionada exclusivamente por la Jefatura Regional de Registro Civil desde el módulo de Administración RBAC.')" class="text-center text-xs text-[#BBA8C9] mt-5 cursor-pointer">
+                ¿Requiere habilitación de cuenta? <span class="text-[#C6FF00] font-bold hover:underline">Contactar a Jefatura Regional</span>
               </p>
-            </form>
+            </div>
 
-            <div class="text-center text-[11px] text-[#C9B6D9]/70 border-t border-[#3d1e57]/60 pt-4">
-              © 2026 RENIEC • Sistema Web Desplegado en Cloudflare Pages Edge Network
+            <div class="text-center text-[11px] text-[#C9B6D9]/60 border-t border-[#3d1e57]/40 pt-4">
+              © 2026 Registro Nacional de Identificación y Estado Civil • Cloudflare Pages Edge CDN
             </div>
           </div>
         </div>
@@ -1073,107 +1123,130 @@
 
       return `
         <div class="space-y-6">
-          <!-- Hero Institucional del Portal Web -->
-          <div class="p-6 rounded-2xl bg-gradient-to-r from-[#4B125E] via-[#38104B] to-[#231033] border border-[#5d2c85] shadow-xl flex flex-col lg:flex-row lg:items-center justify-between gap-5">
-            <div class="space-y-1.5">
-              <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/30 border border-[#C6FF00]/40 text-[11px] font-extrabold text-[#C6FF00]">
-                <span>🌐 PORTAL WEB INSTITUCIONAL RENIEC</span>
-                <span>•</span>
-                <span>${state.supabaseConectado ? 'SUPABASE CLOUD ONLINE' : 'SINCRONIZANDO...'}</span>
+          <!-- Hero Ejecutivo del Portal Web -->
+          <div class="p-6 sm:p-7 rounded-3xl dnie-guilloche border border-[#6e359c]/45 shadow-2xl flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+            <div class="space-y-2">
+              <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#11061B]/80 border border-[#C6FF00]/45 text-[11px] font-extrabold text-[#C6FF00] tracking-wider uppercase">
+                <span class="w-2 h-2 rounded-full bg-[#C6FF00] animate-pulse"></span>
+                <span>CENTRO DE OPERACIONES NACIONAL • ${state.supabaseConectado ? 'CONEXIÓN SUPABASE CLOUD ACTIVA' : 'SINCRONIZANDO...'}</span>
               </div>
-              <h2 class="text-xl sm:text-2xl font-black text-white">Bienvenido(a), ${s.nombreCompleto}</h2>
-              <p class="text-xs sm:text-sm text-white/85">${s.cargo} • <span class="text-[#40C4FF] font-bold">${s.sede}</span></p>
+              <h2 class="text-2xl sm:text-3xl font-black text-white tracking-tight">${s.nombreCompleto}</h2>
+              <div class="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-[#D6C7E3]">
+                <span class="font-bold text-white">${s.cargo}</span>
+                <span>•</span>
+                <span class="px-2.5 py-0.5 rounded-md bg-[#1C0B2B]/90 border border-[#40C4FF]/35 text-[#40C4FF] font-bold">${s.sede}</span>
+              </div>
               <p class="text-xs font-extrabold pt-1 text-[#C6FF00]">
                 ${puedeVerRecaudacion
-                  ? `💰 Recaudación Tasa Banco de la Nación: S/ ${recaudacion}.00`
-                  : `🛡️ Modo Operativo: ${puedeEscribirTramite ? 'Registro y Sincronización Bidireccional Activa' : 'Consulta Oficial de Padrón Nacional y Trámites DNI'}`}
+                  ? `Recaudación Acumulada Tasa Banco de la Nación: S/ ${recaudacion}.00`
+                  : `Nivel de Autorización RBAC: ${puedeEscribirTramite ? 'Registro Biométrico y Sincronización Bidireccional' : 'Consulta Oficial de Padrón Electoral y Trámites DNIe'}`}
               </p>
             </div>
 
             <div class="flex flex-wrap items-center gap-2.5">
-              <button onclick="state.tabActual = 'padron'; render();" class="px-4 py-2.5 rounded-xl bg-[#C6FF00] text-[#14071E] font-extrabold text-xs hover:bg-[#d4ff33] transition shadow">
-                🪪 Consultar Padrón (+${(state.totalCiudadanos || 50009).toLocaleString()})
+              <button onclick="state.tabActual = 'padron'; render();" class="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#C6FF00] text-[#14071E] font-black text-xs hover:bg-[#d4ff33] transition shadow-lg">
+                ${ICONS.idCard}
+                <span>Padrón Nacional (+${(state.totalCiudadanos || 50009).toLocaleString()})</span>
               </button>
               ${puedeEscribirPadron ? `
-                <button onclick="state.tabActual = 'padron'; state.mostrarFormCiudadano = true; state.editandoCiudadanoId = null; render();" class="px-4 py-2.5 rounded-xl bg-[#40C4FF] text-[#00263A] font-extrabold text-xs hover:opacity-90 transition shadow">
+                <button onclick="state.tabActual = 'padron'; state.mostrarFormCiudadano = true; state.editandoCiudadanoId = null; render();" class="px-4 py-2.5 rounded-xl bg-[#40C4FF] text-[#00263A] font-black text-xs hover:opacity-90 transition shadow-lg">
                   + Empadronar Ciudadano
                 </button>
               ` : ''}
-              <button onclick="state.tabActual = 'tramites'; render();" class="px-4 py-2.5 rounded-xl bg-[#231033] border border-[#C6FF00]/50 text-white font-extrabold text-xs hover:bg-[#311747] transition">
-                📋 Ver Trámites (${totalTramites})
+              <button onclick="state.tabActual = 'tramites'; render();" class="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#1C0B2B]/90 border border-[#C6FF00]/45 text-white font-bold text-xs hover:bg-[#28113B] transition">
+                ${ICONS.clipboard}
+                <span>Expedientes (${totalTramites})</span>
               </button>
-              <button onclick="sincronizarConSupabase()" class="px-4 py-2.5 rounded-xl bg-black/30 border border-white/20 text-[#C6FF00] text-xs font-extrabold hover:bg-black/50 transition">
-                ${state.sincronizando ? '⏳ Sincronizando...' : '🔄 Sincronizar Nube'}
+              <button onclick="sincronizarConSupabase()" class="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-black/35 border border-white/15 text-[#C6FF00] text-xs font-extrabold hover:bg-black/55 transition">
+                ${ICONS.sync}
+                <span>${state.sincronizando ? 'Sincronizando...' : 'Actualizar'}</span>
               </button>
             </div>
           </div>
 
-          <!-- Tarjetas KPI de Ancho Completo (4 Columnas Web) -->
+          <!-- Tarjetas Ejecutivas KPI (4 Columnas) -->
           <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-            <div class="p-5 rounded-2xl bg-[#231033] border border-[#3d1e57] flex items-center justify-between">
+            <div class="p-5 rounded-2xl glass-card glass-card-hover flex items-start justify-between">
               <div>
-                <div class="text-xs font-bold text-[#C6FF00] uppercase tracking-wider">Padrón Nacional DNI</div>
-                <div class="text-3xl font-black mt-1 text-white">${(state.totalCiudadanos || 50009).toLocaleString()}</div>
-                <div class="text-xs text-[#C9B6D9] mt-1">Ciudadanos en Supabase Cloud</div>
+                <div class="text-[11px] font-extrabold text-[#C9B6D9] uppercase tracking-wider">Padrón Nacional PIDE</div>
+                <div class="text-3xl font-black mt-1.5 text-white mono">${(state.totalCiudadanos || 50009).toLocaleString()}</div>
+                <div class="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-950/90 border border-emerald-500/30 text-[10px] font-bold text-emerald-300">
+                  <span>●</span>
+                  <span>PostgreSQL Cloud Sincronizado</span>
+                </div>
               </div>
-              <div class="w-12 h-12 rounded-2xl bg-[#311747] border border-[#5d2c85] flex items-center justify-center text-2xl">🪪</div>
+              <div class="w-11 h-11 rounded-xl bg-[#2A123D] border border-[#C6FF00]/40 flex items-center justify-center text-[#C6FF00]">
+                ${ICONS.idCard}
+              </div>
             </div>
 
-            <div class="p-5 rounded-2xl bg-[#231033] border border-[#3d1e57] flex items-center justify-between">
+            <div class="p-5 rounded-2xl glass-card glass-card-hover flex items-start justify-between">
               <div>
-                <div class="text-xs font-bold text-[#C6FF00] uppercase tracking-wider">Trámites Registrados</div>
-                <div class="text-3xl font-black mt-1 text-white">${totalTramites}</div>
-                <div class="text-xs text-[#C9B6D9] mt-1">${pendientes} en curso • ${atendidos} entregados</div>
+                <div class="text-[11px] font-extrabold text-[#C9B6D9] uppercase tracking-wider">Expedientes de Trámite</div>
+                <div class="text-3xl font-black mt-1.5 text-white mono">${totalTramites}</div>
+                <div class="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-[#2A123D] border border-[#40C4FF]/30 text-[10px] font-bold text-[#40C4FF]">
+                  <span>${pendientes} en proceso • ${atendidos} entregados</span>
+                </div>
               </div>
-              <div class="w-12 h-12 rounded-2xl bg-[#311747] border border-[#5d2c85] flex items-center justify-center text-2xl">📋</div>
+              <div class="w-11 h-11 rounded-xl bg-[#2A123D] border border-[#40C4FF]/40 flex items-center justify-center text-[#40C4FF]">
+                ${ICONS.clipboard}
+              </div>
             </div>
 
-            <div class="p-5 rounded-2xl bg-[#231033] border border-[#3d1e57] flex items-center justify-between">
+            <div class="p-5 rounded-2xl glass-card glass-card-hover flex items-start justify-between">
               <div>
-                <div class="text-xs font-bold text-[#40C4FF] uppercase tracking-wider">Sedes &amp; Departamentos</div>
-                <div class="text-3xl font-black mt-1 text-white">${DEPARTAMENTOS.length - 1} Dptos</div>
-                <div class="text-xs text-[#C9B6D9] mt-1">${SEDES_UBIGEO.length} agencias con Ubigeo INEI</div>
+                <div class="text-[11px] font-extrabold text-[#C9B6D9] uppercase tracking-wider">Cobertura Territorial</div>
+                <div class="text-3xl font-black mt-1.5 text-white mono">${DEPARTAMENTOS.length - 1} Regiones</div>
+                <div class="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-[#2A123D] border border-purple-400/30 text-[10px] font-bold text-[#D6C7E3]">
+                  <span>${SEDES_UBIGEO.length} agencias oficiales Ubigeo INEI</span>
+                </div>
               </div>
-              <div class="w-12 h-12 rounded-2xl bg-[#311747] border border-[#5d2c85] flex items-center justify-center text-2xl">🏛️</div>
+              <div class="w-11 h-11 rounded-xl bg-[#2A123D] border border-purple-400/40 flex items-center justify-center text-[#D6C7E3]">
+                ${ICONS.building}
+              </div>
             </div>
 
-            <div class="p-5 rounded-2xl bg-[#231033] border border-[#3d1e57] flex items-center justify-between">
+            <div class="p-5 rounded-2xl glass-card glass-card-hover flex items-start justify-between">
               <div>
-                <div class="text-xs font-bold text-[#C6FF00] uppercase tracking-wider">Tasa de Entrega DNIe</div>
-                <div class="text-3xl font-black mt-1 text-[#C6FF00]">${porcentaje}%</div>
-                <div class="text-xs text-[#C9B6D9] mt-1">${atendidos} de ${totalTramites} trámites atendidos</div>
+                <div class="text-[11px] font-extrabold text-[#C9B6D9] uppercase tracking-wider">Eficiencia de Entrega</div>
+                <div class="text-3xl font-black mt-1.5 text-[#C6FF00] mono">${porcentaje}%</div>
+                <div class="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-[#C6FF00]/10 border border-[#C6FF00]/30 text-[10px] font-bold text-[#C6FF00]">
+                  <span>${atendidos} de ${totalTramites} DNIe 3.0 emitidos</span>
+                </div>
               </div>
-              <div class="w-12 h-12 rounded-2xl bg-[#C6FF00]/15 border border-[#C6FF00]/40 flex items-center justify-center text-2xl text-[#C6FF00]">✓</div>
+              <div class="w-11 h-11 rounded-xl bg-[#C6FF00]/15 border border-[#C6FF00]/45 flex items-center justify-center text-[#C6FF00]">
+                ${ICONS.checkBadge}
+              </div>
             </div>
           </div>
 
-          <!-- Grilla Principal Desktop: 2 Columnas (Indicadores + Sedes a la izquierda, Auditoría en Vivo a la derecha) -->
+          <!-- Grilla Ejecutiva Desktop: 2 Columnas -->
           <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            <!-- Columna Izquierda (5 cols): Indicadores de Brigada + Sedes Regionales -->
+            <!-- Columna Izquierda (5 cols): Métricas por Tipo de Trámite + Sedes -->
             <div class="lg:col-span-5 space-y-6">
-              <div class="p-5 rounded-2xl bg-[#231033] border border-[#3d1e57] space-y-4">
-                <div class="flex justify-between items-center">
+              <div class="p-6 rounded-2xl glass-card space-y-4">
+                <div class="flex justify-between items-start border-b border-white/10 pb-3.5">
                   <div>
-                    <h3 class="text-sm sm:text-base font-extrabold text-white">📊 Indicadores de Brigada RENIEC</h3>
-                    <p class="text-xs text-[#C9B6D9]">Avance de atención por tipo de trámite DNI / DNIe 3.0</p>
+                    <div class="text-[10px] font-extrabold uppercase tracking-widest text-[#C6FF00]">Rendimiento Operativo</div>
+                    <h3 class="text-base font-black text-white mt-0.5">Indicadores de Brigada RENIEC</h3>
                   </div>
-                  <span class="px-2.5 py-1 rounded-lg bg-[#311747] text-xs font-extrabold text-[#C6FF00]">${atendidos}/${totalTramites} (${porcentaje}%)</span>
+                  <span class="px-3 py-1 rounded-lg bg-[#2A123D] border border-[#C6FF00]/40 text-xs font-extrabold text-[#C6FF00] mono">${atendidos}/${totalTramites} (${porcentaje}%)</span>
                 </div>
-                <div class="w-full h-3 bg-[#311747] rounded-full overflow-hidden">
-                  <div class="h-full bg-[#C6FF00]" style="width: ${porcentaje}%"></div>
+                <div class="w-full h-2.5 bg-[#12061C] rounded-full overflow-hidden border border-white/10">
+                  <div class="h-full bg-gradient-to-r from-[#C6FF00] to-[#40C4FF]" style="width: ${porcentaje}%"></div>
                 </div>
-                <div class="pt-1 space-y-3">
+                <div class="pt-1 space-y-3.5">
                   ${TIPOS_TRAMITE.map(tipo => {
                     const cant = state.tramites.filter(t => t.tipoTramite === tipo.id).length;
                     const w = totalTramites ? Math.round((cant / totalTramites) * 100) : 0;
                     return `
                       <div>
-                        <div class="flex justify-between text-xs mb-1">
-                          <span class="text-[#C9B6D9] font-medium">${tipo.etiqueta}</span>
-                          <span class="font-bold text-white">${cant} solic. (${w}%) ${puedeVerRecaudacion ? `• S/ ${tipo.costo}` : ''}</span>
+                        <div class="flex justify-between text-xs mb-1.5">
+                          <span class="text-[#D6C7E3] font-semibold">${tipo.etiqueta}</span>
+                          <span class="font-bold text-white mono">${cant} solic. (${w}%) ${puedeVerRecaudacion ? `• S/ ${tipo.costo}` : ''}</span>
                         </div>
-                        <div class="w-full h-2 bg-[#311747] rounded-full overflow-hidden">
-                          <div class="h-full bg-[#40C4FF]" style="width: ${w}%"></div>
+                        <div class="w-full h-2 bg-[#12061C] rounded-full overflow-hidden">
+                          <div class="h-full bg-[#40C4FF] rounded-full" style="width: ${w}%"></div>
                         </div>
                       </div>
                     `;
@@ -1181,55 +1254,73 @@
                 </div>
               </div>
 
-              <!-- Directorio Rápido de Sedes Conectadas -->
-              <div class="p-5 rounded-2xl bg-[#231033] border border-[#3d1e57] space-y-3">
-                <div class="flex items-center justify-between">
-                  <h3 class="text-sm font-extrabold text-white">🏛️ Agencias y Brigadas con Ubigeo</h3>
-                  <button onclick="state.tabActual = 'padron'; render();" class="text-xs font-bold text-[#40C4FF] hover:underline">Filtrar Padrón →</button>
+              <!-- Directorio de Jurisdicciones Ubigeo -->
+              <div class="p-6 rounded-2xl glass-card space-y-3.5">
+                <div class="flex items-center justify-between border-b border-white/10 pb-3">
+                  <div>
+                    <div class="text-[10px] font-extrabold uppercase tracking-widest text-[#40C4FF]">Catálogo Oficial INEI</div>
+                    <h3 class="text-sm font-black text-white mt-0.5">Sedes Regionales &amp; Brigadas</h3>
+                  </div>
+                  <button onclick="state.tabActual = 'padron'; render();" class="text-xs font-extrabold text-[#C6FF00] hover:underline">Ver Padrón →</button>
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   ${SEDES_UBIGEO.slice(0, 6).map(sede => `
-                    <div onclick="state.filtroDepartamento = '${sede.departamento}'; state.tabActual = 'padron'; render();" class="p-2.5 rounded-xl bg-[#160821] border border-[#3d1e57] hover:border-[#C6FF00] cursor-pointer transition">
-                      <div class="flex items-center justify-between text-[11px] font-extrabold text-[#C6FF00]">
-                        <span>${sede.departamento}</span>
-                        <span class="mono text-[#40C4FF]">${sede.codigo}</span>
+                    <div onclick="state.filtroDepartamento = '${sede.departamento}'; state.tabActual = 'padron'; render();" class="p-3 rounded-xl bg-[#14071E] border border-[#3d1e57] hover:border-[#C6FF00] cursor-pointer transition">
+                      <div class="flex items-center justify-between text-[10px] font-extrabold">
+                        <span class="text-[#C6FF00] tracking-wider">${sede.departamento}</span>
+                        <span class="mono px-1.5 py-0.5 rounded bg-[#231033] text-[#40C4FF]">${sede.codigo}</span>
                       </div>
-                      <div class="text-xs font-bold text-white truncate mt-0.5">${sede.distrito}</div>
-                      <div class="text-[10px] text-[#C9B6D9] truncate">${sede.agencia}</div>
+                      <div class="text-xs font-bold text-white truncate mt-1">${sede.distrito}</div>
+                      <div class="text-[10px] text-[#C9B6D9] truncate mt-0.5">${sede.agencia}</div>
                     </div>
                   `).join('')}
                 </div>
               </div>
             </div>
 
-            <!-- Columna Derecha (7 cols): Actividad Reciente y Auditoría en Vivo (Formato Tabla/Feed Web) -->
-            <div class="lg:col-span-7 p-5 rounded-2xl bg-[#231033] border border-[#3d1e57] space-y-4">
-              <div class="flex flex-wrap justify-between items-center gap-2 border-b border-[#3d1e57] pb-3">
+            <!-- Columna Derecha (7 cols): Bitácora Forense y Telemetría en Tiempo Real -->
+            <div class="lg:col-span-7 p-6 rounded-2xl glass-card space-y-4">
+              <div class="flex flex-wrap justify-between items-center gap-2 border-b border-white/10 pb-3.5">
                 <div>
-                  <h3 class="text-sm sm:text-base font-extrabold text-white">📡 Actividad Reciente y Auditoría en Vivo</h3>
-                  <p class="text-xs text-[#C9B6D9]">Eventos sincronizados en tiempo real entre Android APK y Portal Web Cloudflare</p>
+                  <div class="text-[10px] font-extrabold uppercase tracking-widest text-[#C6FF00]">Bitácora Forense Multiplataforma</div>
+                  <h3 class="text-base font-black text-white mt-0.5">Actividad Reciente y Auditoría en Vivo</h3>
                 </div>
-                <button onclick="state.tabActual = 'reportes'; render();" class="px-3.5 py-1.5 rounded-xl bg-[#311747] border border-[#5d2c85] text-xs font-extrabold text-[#C6FF00] hover:bg-[#4B125E] transition">
-                  Ver Panel de Reportes →
+                <button onclick="state.tabActual = 'reportes'; render();" class="px-3.5 py-2 rounded-xl bg-[#2A123D] border border-[#C6FF00]/40 text-xs font-extrabold text-[#C6FF00] hover:bg-[#381852] transition">
+                  Analítica Completa →
                 </button>
               </div>
-              ${state.auditorias.length === 0 ? `<p class="text-xs text-[#C9B6D9] py-6 text-center">Sincronizando eventos de auditoría desde Supabase...</p>` : `
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  ${state.auditorias.slice(0, 8).map(a => `
-                    <div class="p-3.5 rounded-xl bg-[#160821] border border-[#3d1e57] hover:border-[#5d2c85] flex flex-col justify-between gap-2 transition">
-                      <div>
-                        <div class="flex items-start justify-between gap-2">
-                          <span class="text-xs font-extrabold text-[#C6FF00] break-words">${a.accion} • DNI ${a.referencia_dni || ''}</span>
-                          <span class="px-2 py-0.5 rounded-md bg-[#311747] text-[10px] font-bold text-[#40C4FF] whitespace-nowrap shrink-0">@${a.usuario}</span>
-                        </div>
-                        <div class="text-xs text-white/90 mt-1.5 break-words leading-relaxed">${a.detalle || ''}</div>
-                      </div>
-                      <div class="text-[10px] text-[#C9B6D9] pt-2 border-t border-white/5 flex items-center justify-between gap-2">
-                        <span class="truncate">📡 ${a.canal_telemetria || 'Supabase'}</span>
-                        <span class="truncate opacity-80">${(a.created_at || '').replace('T', ' ').slice(0, 16)}</span>
-                      </div>
-                    </div>
-                  `).join('')}
+              ${state.auditorias.length === 0 ? `<p class="text-xs text-[#C9B6D9] py-8 text-center">Sincronizando eventos de auditoría desde Supabase...</p>` : `
+                <div class="overflow-x-auto">
+                  <table class="w-full text-left border-collapse">
+                    <thead>
+                      <tr class="border-b border-[#3d1e57] text-[10px] font-extrabold uppercase tracking-wider text-[#C9B6D9]">
+                        <th class="py-2.5 px-3">Operación / Referencia</th>
+                        <th class="py-2.5 px-3">Detalle de Auditoría</th>
+                        <th class="py-2.5 px-3">Operador</th>
+                        <th class="py-2.5 px-3 text-right">Canal / Dispositivo</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-[#3d1e57]/40 text-xs">
+                      ${state.auditorias.slice(0, 8).map(a => `
+                        <tr class="hover:bg-white/[0.03] transition">
+                          <td class="py-3 px-3 align-top whitespace-nowrap">
+                            <div class="font-extrabold text-[#C6FF00] mono text-[11px]">${a.accion}</div>
+                            <div class="text-[10px] text-[#C9B6D9] mono mt-0.5">REF: ${a.referencia_dni || 'SISTEMA'}</div>
+                          </td>
+                          <td class="py-3 px-3 align-top">
+                            <div class="text-white/95 font-medium leading-snug max-w-xs break-words">${a.detalle || ''}</div>
+                          </td>
+                          <td class="py-3 px-3 align-top whitespace-nowrap">
+                            <span class="px-2 py-0.5 rounded-md bg-[#2A123D] border border-[#40C4FF]/30 text-[11px] font-bold text-[#40C4FF] mono">@${a.usuario}</span>
+                          </td>
+                          <td class="py-3 px-3 align-top text-right whitespace-nowrap">
+                            <div class="text-[11px] text-[#D6C7E3] font-semibold">${a.canal_telemetria || 'Supabase Cloud'}</div>
+                            <div class="text-[10px] text-[#C9B6D9]/70 mono truncate max-w-[150px] ml-auto">${(a.created_at || '').replace('T', ' ').slice(0, 16) || a.dispositivo || ''}</div>
+                          </td>
+                        </tr>
+                      `).join('')}
+                    </tbody>
+                  </table>
                 </div>
               `}
             </div>
@@ -1257,62 +1348,100 @@
 
       return `
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          <!-- Columna Izquierda Sticky (5 cols en Desktop): Visor DNIe 3.0 Interactivo -->
-          <div class="lg:col-span-5 lg:sticky lg:top-6 space-y-4">
+          <!-- Columna Izquierda Sticky (5 cols): Visor Oficial DNIe 3.0 con Guilloché -->
+          <div class="lg:col-span-5 lg:sticky lg:top-20 space-y-4">
             ${seleccionado ? `
-              <div onclick="state.dniReverso = !state.dniReverso; actualizarSoloResultadosPadron();" class="p-5 rounded-2xl bg-gradient-to-br from-[#4B125E] to-[#2c0b3a] border-2 border-[#C6FF00]/50 shadow-2xl cursor-pointer transition">
-                <div class="flex justify-between items-center border-b border-white/15 pb-3 mb-4">
-                  <div>
-                    <div class="text-[11px] font-extrabold text-[#C6FF00] tracking-wider">REPÚBLICA DEL PERÚ • RENIEC</div>
-                    <div class="text-xs font-bold text-white">
-                      ${!state.dniReverso ? 'DOCUMENTO NACIONAL DE IDENTIDAD ELECTRÓNICO (ANVERSO)' : 'DNIe 3.0 • DATOS DE UBIGEO Y ZONA MRZ (REVERSO)'}
+              <div onclick="state.dniReverso = !state.dniReverso; actualizarSoloResultadosPadron();" class="p-6 rounded-3xl dnie-guilloche border-2 border-[#C6FF00]/55 shadow-2xl cursor-pointer transition relative overflow-hidden">
+                <!--cabecera oficial del documento-->
+                <div class="flex justify-between items-start border-b border-white/15 pb-3.5 mb-4">
+                  <div class="flex items-center gap-2.5">
+                    <span class="px-2 py-0.5 rounded bg-[#8C0B42] text-white font-black text-[10px] tracking-widest">PERÚ</span>
+                    <div>
+                      <div class="text-[11px] font-black text-[#C6FF00] tracking-wider uppercase">República del Perú • RENIEC</div>
+                      <div class="text-[11px] font-semibold text-white/90">
+                        ${!state.dniReverso ? 'DOCUMENTO NACIONAL DE IDENTIDAD ELECTRÓNICO' : 'DNIe 3.0 • JURISDICCIÓN UBIGEO & ZONA ICAO MRZ'}
+                      </div>
                     </div>
                   </div>
-                  <span class="px-3 py-1 rounded-lg bg-[#C6FF00] text-[#14071E] font-extrabold text-xs shadow">
-                    CUI ${seleccionado.dni}-${digito}
-                  </span>
+                  <div class="text-right">
+                    <div class="text-[9px] font-extrabold uppercase tracking-wider text-[#C9B6D9]">CUI / DNI</div>
+                    <span class="inline-block px-2.5 py-0.5 rounded-md bg-[#C6FF00] text-[#14071E] font-black text-xs mono shadow">
+                      ${seleccionado.dni}-${digito}
+                    </span>
+                  </div>
                 </div>
 
                 ${!state.dniReverso ? `
-                  <div class="flex items-center gap-4">
-                    <div class="flex flex-col items-center gap-1.5 shrink-0">
-                      <div class="w-24 h-28 rounded-xl bg-[#231033] border-2 border-[#C6FF00]/70 overflow-hidden flex items-center justify-center relative shadow-md">
+                  <div class="flex items-start gap-4">
+                    <div class="flex flex-col items-center gap-2 shrink-0">
+                      <div class="w-24 h-28 rounded-xl bg-[#160821] border-2 border-[#C6FF00]/75 overflow-hidden flex items-center justify-center relative shadow-lg">
                         <img
                           src="${urlFotoCiudadano(seleccionado.dni)}"
                           alt="Foto DNI ${seleccionado.dni}"
                           class="w-full h-full object-cover"
                           onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
                         />
-                        <div style="display:none" class="w-full h-full items-center justify-center text-3xl flex-col gap-0.5 text-[#C9B6D9]">
-                          <span>👤</span>
-                          <span class="text-[9px] font-bold">SIN FOTO</span>
+                        <div style="display:none" class="w-full h-full items-center justify-center flex-col gap-1 text-[#C9B6D9]">
+                          ${ICONS.idCard}
+                          <span class="text-[9px] font-extrabold">SIN FOTO</span>
                         </div>
                       </div>
-                      <span class="px-2 py-0.5 rounded bg-amber-500/20 text-[#C6FF00] text-[10px] font-extrabold">⚡ CHIP NFC</span>
+                      <div class="px-2.5 py-0.5 rounded-md bg-amber-400/20 border border-amber-300/40 text-amber-300 text-[10px] font-black mono">
+                        CHIP PKI NFC
+                      </div>
                     </div>
-                    <div class="text-xs space-y-1.5 flex-1">
-                      <div><span class="text-[#C9B6D9]">PRIMER APELLIDO:</span> <b class="text-white">${seleccionado.apellidoPaterno}</b></div>
-                      <div><span class="text-[#C9B6D9]">SEGUNDO APELLIDO:</span> <b class="text-white">${seleccionado.apellidoMaterno}</b></div>
-                      <div class="text-sm font-extrabold text-[#C6FF00]">PRENOMBRES: ${seleccionado.nombres}</div>
-                      <div><span class="text-[#C9B6D9]">NACIMIENTO:</span> <b>${seleccionado.fechaNacimiento}</b></div>
-                      <div><span class="text-[#C9B6D9]">ESTADO CIVIL:</span> <b>${seleccionado.estadoCivil}</b></div>
-                      <div><span class="text-[#C9B6D9]">UBIGEO (${ubSel.codigo}):</span> <b>${seleccionado.ubigeo}</b></div>
+
+                    <div class="grid grid-cols-2 gap-x-3 gap-y-2 text-xs flex-1">
+                      <div class="col-span-2">
+                        <div class="text-[10px] font-bold text-[#C9B6D9] uppercase">Primer Apellido</div>
+                        <div class="text-sm font-black text-white tracking-wide">${seleccionado.apellidoPaterno}</div>
+                      </div>
+                      <div class="col-span-2">
+                        <div class="text-[10px] font-bold text-[#C9B6D9] uppercase">Segundo Apellido</div>
+                        <div class="text-sm font-black text-white tracking-wide">${seleccionado.apellidoMaterno}</div>
+                      </div>
+                      <div class="col-span-2">
+                        <div class="text-[10px] font-bold text-[#C9B6D9] uppercase">Prenombres</div>
+                        <div class="text-sm font-black text-[#C6FF00] tracking-wide">${seleccionado.nombres}</div>
+                      </div>
+                      <div>
+                        <div class="text-[10px] font-bold text-[#C9B6D9] uppercase">Nacimiento</div>
+                        <div class="font-bold text-white mono text-[11px]">${seleccionado.fechaNacimiento}</div>
+                      </div>
+                      <div>
+                        <div class="text-[10px] font-bold text-[#C9B6D9] uppercase">Estado Civil</div>
+                        <div class="font-bold text-white text-[11px]">${seleccionado.estadoCivil}</div>
+                      </div>
+                      <div class="col-span-2 pt-0.5">
+                        <div class="text-[10px] font-bold text-[#C9B6D9] uppercase">Ubigeo (${ubSel.codigo})</div>
+                        <div class="font-bold text-[#40C4FF] text-[11px] truncate">${seleccionado.ubigeo}</div>
+                      </div>
                     </div>
                   </div>
                 ` : `
                   <div class="space-y-3">
-                    <div class="flex items-center justify-between gap-3 text-xs">
-                      <div class="flex-1 space-y-1">
-                        <div><b>DOMICILIO:</b> ${seleccionado.direccion}</div>
-                        <div><b>DPTO / PROV / DIST:</b> ${seleccionado.ubigeo}</div>
-                        <div class="text-[#C6FF00] font-bold">SEDE RENIEC: ${ubSel.agencia}</div>
-                        <div class="text-[#40C4FF] font-bold">DONACIÓN DE ÓRGANOS: ${seleccionado.donacionOrganos ? 'SÍ AUTORIZA' : 'NO ESPECIFICA'}</div>
+                    <div class="flex items-start justify-between gap-3 text-xs">
+                      <div class="flex-1 space-y-1.5">
+                        <div>
+                          <span class="text-[10px] font-bold text-[#C9B6D9] uppercase block">Domicilio Registrado</span>
+                          <b class="text-white">${seleccionado.direccion}</b>
+                        </div>
+                        <div>
+                          <span class="text-[10px] font-bold text-[#C9B6D9] uppercase block">Departamento / Provincia / Distrito</span>
+                          <b class="text-white">${seleccionado.ubigeo}</b>
+                        </div>
+                        <div class="flex items-center justify-between pt-1">
+                          <span class="text-[#C6FF00] font-bold text-[11px]">Agencia: ${ubSel.agencia}</span>
+                          <span class="px-2 py-0.5 rounded bg-[#14071E] text-[#40C4FF] font-extrabold text-[10px]">
+                            Donación: ${seleccionado.donacionOrganos ? 'SÍ' : 'NO'}
+                          </span>
+                        </div>
                       </div>
-                      <div class="p-3 rounded-xl bg-white text-black font-mono text-[10px] font-black leading-tight text-center shadow">
+                      <div class="p-2.5 rounded-xl bg-white text-black font-mono text-[10px] font-black leading-tight text-center shadow shrink-0">
                         ▣▤▥<br/>▤QR▤<br/>▥▤▣
                       </div>
                     </div>
-                    <div class="p-3 rounded-xl bg-[#160821] mono text-[11px] text-[#C6FF00] leading-snug border border-[#3d1e57]">
+                    <div class="p-3 rounded-xl bg-[#0B0312] mono text-[11px] text-[#C6FF00] leading-snug border border-[#3d1e57] tracking-wider">
                       I&lt;PER${seleccionado.dni}&lt;${digito}&lt;&lt;&lt;${ubSel.codigo}&lt;&lt;&lt;&lt;&lt;&lt;&lt;<br/>
                       9905144M3011045PER&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;6<br/>
                       ${seleccionado.apellidoPaterno.padEnd(12, '<').slice(0,12)}&lt;&lt;${seleccionado.nombres.replace(' ', '<').padEnd(14, '<').slice(0,14)}
@@ -1321,69 +1450,99 @@
                 `}
 
                 <div class="mt-4 pt-3 border-t border-white/15 flex flex-wrap items-center justify-between gap-2">
-                  <span class="text-[11px] text-[#C6FF00] font-semibold">🔄 Clic en la tarjeta para girar (Anverso / Reverso MRZ)</span>
+                  <span class="text-[11px] text-[#D6C7E3] font-semibold">Clic sobre la credencial para alternar Anverso / Reverso MRZ</span>
                   <div class="flex flex-wrap gap-2" onclick="event.stopPropagation();">
                     ${puedeEscribir ? `
-                      <label class="px-3 py-1.5 rounded-lg bg-[#40C4FF] text-[#00263A] font-extrabold text-xs cursor-pointer hover:opacity-90">
-                        ${state.subiendoFotoDni === seleccionado.dni ? 'Subiendo...' : '📸 Subir / Cambiar Foto'}
+                      <label class="px-3 py-1.5 rounded-lg bg-[#40C4FF] text-[#00263A] font-black text-xs cursor-pointer hover:opacity-90 transition">
+                        ${state.subiendoFotoDni === seleccionado.dni ? 'Subiendo...' : 'Actualizar Biometría'}
                         <input type="file" accept="image/*" capture="user" class="hidden" onchange="subirFotoCiudadano('${seleccionado.dni}', this.files[0])" />
                       </label>
                     ` : ''}
-                    ${puedeTramite ? `<button onclick="iniciarTramiteDesdeCiudadano(${seleccionado.id})" class="px-3 py-1.5 rounded-lg bg-[#C6FF00] text-[#14071E] font-extrabold text-xs hover:bg-[#d4ff33]">+ Iniciar Trámite</button>` : ''}
+                    ${puedeTramite ? `<button onclick="iniciarTramiteDesdeCiudadano(${seleccionado.id})" class="px-3 py-1.5 rounded-lg bg-[#C6FF00] text-[#14071E] font-black text-xs hover:bg-[#d4ff33] transition">+ Generar Trámite</button>` : ''}
                   </div>
                 </div>
               </div>
 
-              <!-- Resumen de Ficha Registral Seleccionada -->
-              <div class="p-4 rounded-2xl bg-[#231033] border border-[#3d1e57] space-y-2 text-xs">
-                <div class="flex items-center justify-between">
-                  <span class="font-extrabold text-[#40C4FF]">📌 Ficha Registral Activa</span>
-                  <span class="mono text-[#C6FF00] font-bold">ID #${seleccionado.id}</span>
+              <!-- Resumen Técnico de Ficha -->
+              <div class="p-4 rounded-2xl glass-card space-y-2 text-xs">
+                <div class="flex items-center justify-between border-b border-white/10 pb-2">
+                  <span class="font-extrabold text-[#40C4FF] uppercase tracking-wider text-[11px]">Expediente Biométrico PIDE</span>
+                  <span class="mono text-[#C6FF00] font-bold">REG #${seleccionado.id}</span>
                 </div>
-                <div class="text-[#C9B6D9]">Dirección Declarada: <span class="text-white font-semibold">${seleccionado.direccion}</span></div>
-                <div class="text-[#C9B6D9]">Jurisdicción RENIEC: <span class="text-white font-semibold">${ubSel.agencia}</span></div>
+                <div class="flex justify-between gap-2"><span class="text-[#C9B6D9]">Dirección:</span> <span class="text-white font-semibold text-right">${seleccionado.direccion}</span></div>
+                <div class="flex justify-between gap-2"><span class="text-[#C9B6D9]">Oficina Registral:</span> <span class="text-white font-semibold text-right">${ubSel.agencia}</span></div>
               </div>
             ` : ''}
           </div>
 
-          <!-- Columna Derecha (7 cols en Desktop): Directorio / Tabla de Ciudadanos -->
+          <!-- Columna Derecha (7 cols): Tabla Ejecutiva del Padrón Nacional -->
           <div class="lg:col-span-7 space-y-3">
-            <div class="flex items-center justify-between px-1">
-              <div class="text-xs sm:text-sm font-extrabold text-white">
-                📋 Padrón de Ciudadanos en ${state.filtroDepartamento === 'TODOS' ? 'Todo el Perú' : state.filtroDepartamento}
+            <div class="p-4 rounded-2xl glass-card flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <div class="text-[10px] font-extrabold uppercase tracking-widest text-[#C6FF00]">Consulta en Tiempo Real</div>
+                <div class="text-sm font-black text-white">
+                  Directorio Ciudadano • ${state.filtroDepartamento === 'TODOS' ? 'Nivel Nacional (Perú)' : state.filtroDepartamento}
+                </div>
               </div>
-              <span class="px-2.5 py-1 rounded-lg bg-[#231033] border border-[#3d1e57] text-xs font-bold text-[#C6FF00]">
-                Mostrando ${filtrados.length} de ${(state.totalCiudadanos || 50009).toLocaleString()}
+              <span class="px-3 py-1 rounded-lg bg-[#14071E] border border-[#3d1e57] text-xs font-extrabold text-[#C6FF00] mono">
+                ${filtrados.length} de ${(state.totalCiudadanos || 50009).toLocaleString()} registros
               </span>
             </div>
 
-            <div class="grid grid-cols-1 gap-2.5">
-              ${filtrados.map(c => {
-                const ub = buscarUbigeo(c.ubigeo);
-                const esSel = seleccionado && seleccionado.id === c.id;
-                return `
-                  <div onclick="state.ciudadanoSeleccionadoId = ${c.id}; actualizarSoloResultadosPadron();" class="p-3.5 rounded-2xl ${esSel ? 'bg-[#311747] border-2 border-[#C6FF00]' : 'bg-[#231033] hover:bg-[#2b143e] border border-[#3d1e57]'} flex items-center justify-between gap-3 cursor-pointer transition">
-                    <div class="flex items-center gap-3.5 min-w-0 flex-1">
-                      <div class="w-12 h-14 rounded-xl bg-[#160821] border ${esSel ? 'border-[#C6FF00]' : 'border-[#3d1e57]'} overflow-hidden shrink-0 flex items-center justify-center">
-                        <img src="${urlFotoCiudadano(c.dni)}" alt="" class="w-full h-full object-cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
-                        <span style="display:none" class="text-lg">🪪</span>
-                      </div>
-                      <div class="min-w-0 flex-1">
-                        <div class="flex flex-wrap items-center gap-2">
-                          <span class="px-2 py-0.5 rounded bg-[#160821] mono text-xs font-extrabold text-[#C6FF00]">DNI ${c.dni}</span>
-                          <span class="text-sm font-extrabold text-white break-words">${c.nombres} ${c.apellidoPaterno} ${c.apellidoMaterno}</span>
-                        </div>
-                        <div class="text-xs text-[#40C4FF] font-semibold break-words mt-0.5">Ubigeo ${ub.codigo}: ${c.ubigeo}</div>
-                        <div class="text-[11px] text-[#C9B6D9] break-words">Domicilio: ${c.direccion} • Nac: ${c.fechaNacimiento} • ${c.estadoCivil}</div>
-                      </div>
-                    </div>
-                    <div class="flex items-center gap-1" onclick="event.stopPropagation();">
-                      ${puedeEscribir ? `<button onclick="state.editandoCiudadanoId = ${c.id}; state.formCiudadano = {...state.ciudadanos.find(x=>x.id===${c.id})}; state.mostrarFormCiudadano = true; render();" title="Editar" class="p-2 rounded-lg bg-[#160821] hover:bg-white/10 text-xs">✏️</button>` : ''}
-                      ${puedeEliminar ? `<button onclick="eliminarCiudadano(${c.id})" title="Eliminar" class="p-2 rounded-lg bg-[#160821] hover:bg-white/10 text-[#FF5252] text-xs">🗑️</button>` : puedeEscribir ? `<span title="Borrado protegido en Brigada" class="p-2 opacity-50">🔒</span>` : ''}
-                    </div>
-                  </div>
-                `;
-              }).join('')}
+            <div class="rounded-2xl glass-card overflow-hidden">
+              <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                  <thead>
+                    <tr class="border-b border-[#3d1e57] bg-[#14071E]/80 text-[10px] font-extrabold uppercase tracking-wider text-[#C9B6D9]">
+                      <th class="py-3 px-3.5">Ciudadano / CUI</th>
+                      <th class="py-3 px-3.5 hidden sm:table-cell">Jurisdicción Ubigeo</th>
+                      <th class="py-3 px-3.5 hidden md:table-cell">Nacimiento / Est. Civil</th>
+                      <th class="py-3 px-3.5 text-right">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-[#3d1e57]/40 text-xs">
+                    ${filtrados.map(c => {
+                      const ub = buscarUbigeo(c.ubigeo);
+                      const esSel = seleccionado && seleccionado.id === c.id;
+                      return `
+                        <tr onclick="state.ciudadanoSeleccionadoId = ${c.id}; actualizarSoloResultadosPadron();" class="cursor-pointer transition ${esSel ? 'bg-[#311747]/90' : 'hover:bg-white/[0.04]'}">
+                          <td class="py-3 px-3.5">
+                            <div class="flex items-center gap-3">
+                              <div class="w-10 h-12 rounded-lg bg-[#14071E] border ${esSel ? 'border-[#C6FF00]' : 'border-[#3d1e57]'} overflow-hidden shrink-0 flex items-center justify-center text-[#C9B6D9]">
+                                <img src="${urlFotoCiudadano(c.dni)}" alt="" class="w-full h-full object-cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+                                <span style="display:none" class="items-center justify-center">${ICONS.idCard}</span>
+                              </div>
+                              <div class="min-w-0">
+                                <div class="flex items-center gap-2">
+                                  <span class="px-2 py-0.5 rounded bg-[#11061B] border border-[#C6FF00]/40 mono text-[11px] font-extrabold text-[#C6FF00]">${c.dni}</span>
+                                  ${esSel ? `<span class="w-2 h-2 rounded-full bg-[#C6FF00]"></span>` : ''}
+                                </div>
+                                <div class="font-extrabold text-white mt-1 break-words">${c.apellidoPaterno} ${c.apellidoMaterno}, ${c.nombres}</div>
+                                <div class="text-[11px] text-[#C9B6D9] sm:hidden mt-0.5">${c.ubigeo}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td class="py-3 px-3.5 hidden sm:table-cell align-middle">
+                            <div class="font-bold text-[#40C4FF] mono text-[11px]">UBIGEO ${ub.codigo}</div>
+                            <div class="text-[11px] text-white/90 truncate max-w-[200px]">${c.ubigeo}</div>
+                            <div class="text-[10px] text-[#C9B6D9] truncate max-w-[200px]">${c.direccion}</div>
+                          </td>
+                          <td class="py-3 px-3.5 hidden md:table-cell align-middle whitespace-nowrap">
+                            <div class="font-bold text-white mono text-[11px]">${c.fechaNacimiento}</div>
+                            <span class="inline-block mt-1 px-2 py-0.5 rounded bg-[#14071E] border border-[#3d1e57] text-[10px] font-bold text-[#D6C7E3]">${c.estadoCivil}</span>
+                          </td>
+                          <td class="py-3 px-3.5 align-middle text-right whitespace-nowrap" onclick="event.stopPropagation();">
+                            <div class="inline-flex items-center gap-1.5">
+                              ${puedeEscribir ? `<button onclick="state.editandoCiudadanoId = ${c.id}; state.formCiudadano = {...state.ciudadanos.find(x=>x.id===${c.id})}; state.mostrarFormCiudadano = true; render();" class="px-2.5 py-1 rounded-lg bg-[#14071E] border border-[#3d1e57] hover:border-[#C6FF00] text-[11px] font-bold text-[#C6FF00]">Editar</button>` : ''}
+                              ${puedeEliminar ? `<button onclick="eliminarCiudadano(${c.id})" class="px-2.5 py-1 rounded-lg bg-[#4A1228] border border-[#FF5252]/40 hover:bg-[#5C1127] text-[11px] font-bold text-[#FFCDD2]">Baja</button>` : ''}
+                            </div>
+                          </td>
+                        </tr>
+                      `;
+                    }).join('')}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
@@ -1918,130 +2077,135 @@
     function renderMainScaffold() {
       const s = state.sesion;
       const titulos = {
-        inicio: "Dashboard General & Indicadores en Vivo",
-        padron: "Padrón Nacional PIDE (+81,997 Ciudadanos)",
-        tramites: "Ventanilla y Gestión de Trámites DNIe 3.0",
-        reportes: "Centro de Analítica, Gráficos y Auditoría",
-        perfil: "Credencial Digital JWT & Administración RBAC"
+        inicio: "Centro de Comando & Monitoreo Operativo",
+        padron: "Padrón Nacional PIDE (+81,997 Registros Ciudadanos)",
+        tramites: "Ventanilla Única & Gestión de Trámites DNIe 3.0",
+        reportes: "Inteligencia Operativa, Analítica & Auditoría Forense",
+        perfil: "Credencial Criptográfica JWT & Control de Acceso RBAC"
       };
       const navItems = [
-        { id: "inicio", label: "Dashboard Inicio", shortLabel: "Inicio", icon: "🏠", badge: "LIVE" },
-        { id: "padron", label: "Padrón Nacional DNI", shortLabel: "Padrón", icon: "🪪", badge: (state.totalCiudadanos || 50009).toLocaleString() },
-        { id: "tramites", label: "Gestión de Trámites", shortLabel: "Trámites", icon: "📋", badge: state.tramites.length },
-        { id: "reportes", label: "Reportes y Auditoría", shortLabel: "Reportes", icon: "📊", badge: state.auditorias.length },
-        { id: "perfil", label: "Perfil & Operadores", shortLabel: "Perfil", icon: "👤", badge: "RBAC" }
+        { id: "inicio", label: "Panel Ejecutivo", shortLabel: "Inicio", icon: ICONS.home, badge: "LIVE" },
+        { id: "padron", label: "Padrón Nacional DNI", shortLabel: "Padrón", icon: ICONS.idCard, badge: (state.totalCiudadanos || 50009).toLocaleString() },
+        { id: "tramites", label: "Ventanilla de Trámites", shortLabel: "Trámites", icon: ICONS.clipboard, badge: state.tramites.length },
+        { id: "reportes", label: "Analítica y Auditoría", shortLabel: "Reportes", icon: ICONS.chart, badge: state.auditorias.length },
+        { id: "perfil", label: "Seguridad & Operadores", shortLabel: "Perfil", icon: ICONS.shield, badge: "RBAC" }
       ];
 
       return `
-        <!-- Franja Superior Oficial Gob.pe / RENIEC -->
-        <div class="bg-[#0b0312] border-b border-[#3d1e57] px-4 lg:px-8 py-1.5 flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#C9B6D9]">
-          <div class="flex items-center gap-2">
-            <span class="px-2 py-0.5 rounded bg-[#8C0B42] text-white font-extrabold">PERÚ</span>
-            <span class="font-semibold text-white/90">Registro Nacional de Identificación y Estado Civil • Portal Web Oficial</span>
+        <!-- Franja Superior Gubernamental Gob.pe / RENIEC -->
+        <div class="bg-[#08020E] border-b border-[#3d1e57]/70 px-4 lg:px-8 py-1.5 flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#C9B6D9]">
+          <div class="flex items-center gap-2.5">
+            <span class="px-2 py-0.5 rounded bg-[#8C0B42] text-white font-black tracking-wider text-[10px]">PERÚ</span>
+            <span class="font-semibold text-white/90">Registro Nacional de Identificación y Estado Civil • Plataforma de Interoperabilidad PIDE</span>
           </div>
           <div class="flex items-center gap-4">
-            <span class="hidden sm:inline">☁️ Endpoint: <b class="text-[#C6FF00] mono">vktclzpkebwvfbrvtpxo.supabase.co</b></span>
+            <span class="hidden md:inline text-[#C9B6D9]/80">Nodo Cloud: <b class="text-[#C6FF00] mono">vktclzpkebwvfbrvtpxo.supabase.co</b></span>
             <span class="flex items-center gap-1.5 font-bold ${state.supabaseConectado ? 'text-[#C6FF00]' : 'text-amber-300'}">
-              <span class="w-2 h-2 rounded-full ${state.supabaseConectado ? 'bg-[#C6FF00]' : 'bg-amber-400'}"></span>
+              <span class="w-2 h-2 rounded-full ${state.supabaseConectado ? 'bg-[#C6FF00] animate-pulse' : 'bg-amber-400'}"></span>
               ${state.supabaseConectado ? 'PostgreSQL Online' : 'Sincronizando...'}
             </span>
           </div>
         </div>
 
-        <!-- Navbar Principal Web -->
-        <header class="topbar-gradient px-4 lg:px-8 py-3.5 flex items-center justify-between shadow-lg border-b border-white/10 sticky top-0 z-30">
+        <!-- Navbar Ejecutiva Superior -->
+        <header class="topbar-gradient px-4 lg:px-8 py-3 flex items-center justify-between shadow-xl border-b border-white/10 sticky top-0 z-30">
           <div class="flex items-center gap-3.5">
-            <div class="w-10 h-10 rotate-45 border-2 border-[#C6FF00] rounded-xl bg-black/25 flex items-center justify-center shadow">
-              <span class="-rotate-45 text-base">🪪</span>
+            <div class="w-10 h-10 rounded-xl bg-[#160821]/70 border border-[#C6FF00]/70 flex items-center justify-center shadow text-[#C6FF00]">
+              ${ICONS.idCard}
             </div>
             <div>
-              <div class="flex items-center gap-2">
-                <span class="font-black text-base sm:text-lg tracking-tight text-white">RENIEC DIGITAL WEB</span>
-                <span class="hidden md:inline-block px-2 py-0.5 rounded-md bg-black/30 border border-[#C6FF00]/40 text-[10px] font-extrabold text-[#C6FF00]">
-                  DNIe 3.0 • PIDE
+              <div class="flex items-center gap-2.5">
+                <span class="font-black text-base sm:text-lg tracking-tight text-white">RENIEC DIGITAL</span>
+                <span class="hidden md:inline-block px-2 py-0.5 rounded bg-black/35 border border-[#C6FF00]/40 text-[10px] font-extrabold text-[#C6FF00] mono">
+                  v3.0 ENTERPRISE
                 </span>
               </div>
-              <div class="text-[11px] text-white/80 hidden sm:block">${titulos[state.tabActual]}</div>
+              <div class="text-[11px] text-white/75 hidden sm:block font-medium">${titulos[state.tabActual]}</div>
             </div>
           </div>
 
-          <!-- Navegación Horizontal Rápida en Desktop + Perfil Usuario -->
+          <!-- Acciones Rápidas y Credencial de Operador -->
           <div class="flex items-center gap-3">
-            <button onclick="sincronizarConSupabase()" class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/30 hover:bg-black/45 border border-white/15 text-xs font-extrabold text-[#C6FF00] transition">
-              <span>${state.sincronizando ? '⏳' : '🔄'}</span>
-              <span>${state.sincronizando ? 'Sync...' : 'Sincronizar'}</span>
+            <button onclick="sincronizarConSupabase()" class="hidden sm:flex items-center gap-2 px-3.5 py-2 rounded-xl bg-black/30 hover:bg-black/50 border border-white/15 text-xs font-extrabold text-[#C6FF00] transition">
+              ${ICONS.sync}
+              <span>${state.sincronizando ? 'Sincronizando...' : 'Sincronizar BD'}</span>
             </button>
 
-            <div class="hidden md:flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-black/25 border border-white/10">
-              <div class="w-7 h-7 rounded-full bg-[#C6FF00] text-[#14071E] font-black text-xs flex items-center justify-center">
-                ${(s.usuario || 'R')[0].toUpperCase()}
+            <div class="hidden md:flex items-center gap-3 px-3.5 py-1.5 rounded-xl bg-black/30 border border-white/10">
+              <div class="w-8 h-8 rounded-lg bg-[#C6FF00] text-[#14071E] font-black text-xs flex items-center justify-center shadow">
+                ${(s.usuario || 'R').slice(0, 2).toUpperCase()}
               </div>
               <div class="leading-tight">
-                <div class="text-xs font-extrabold text-white">@${s.usuario}</div>
-                <div class="text-[10px] text-[#C6FF00] font-semibold truncate max-w-[170px]">${s.cargo}</div>
+                <div class="text-xs font-extrabold text-white">${s.nombreCompleto.split('(')[0].trim()}</div>
+                <div class="text-[10px] text-[#C6FF00] font-semibold truncate max-w-[190px]">@${s.usuario} • ${s.cargo}</div>
               </div>
             </div>
 
-            <button onclick="cerrarSesion()" class="text-xs font-extrabold px-3.5 py-2 rounded-xl bg-[#160821]/80 hover:bg-[#160821] border border-[#C6FF00]/40 text-[#C6FF00] transition">
-              🚪 Salir
+            <button onclick="cerrarSesion()" class="flex items-center gap-1.5 text-xs font-extrabold px-3.5 py-2 rounded-xl bg-[#160821]/85 hover:bg-[#160821] border border-[#C6FF00]/40 text-[#C6FF00] transition">
+              ${ICONS.logout}
+              <span>Salir</span>
             </button>
           </div>
         </header>
 
-        <!-- Cuerpo Web: Sidebar Lateral en Desktop + Área Principal Amplia -->
+        <!-- Cuerpo Principal: Sidebar Lateral Ejecutiva + Área de Trabajo -->
         <div class="flex-1 flex flex-col lg:flex-row">
           <!-- Sidebar Lateral (Visible en Desktop lg+) -->
-          <aside class="hidden lg:flex lg:w-64 xl:w-72 bg-[#1b0b28] border-r border-[#3d1e57] flex-col justify-between p-5 shrink-0">
+          <aside class="hidden lg:flex lg:w-64 xl:w-72 bg-[#12061C] border-r border-[#3d1e57]/70 flex-col justify-between p-5 shrink-0">
             <div class="space-y-6">
               <div>
-                <div class="text-[11px] font-extrabold uppercase tracking-wider text-[#C9B6D9] px-3 mb-2">
-                  Menú Principal Web
+                <div class="text-[10px] font-black uppercase tracking-widest text-[#C9B6D9]/70 px-3 mb-2.5">
+                  Módulos del Sistema
                 </div>
                 <nav class="space-y-1.5">
-                  ${navItems.map(item => `
-                    <button
-                      onclick="state.tabActual = '${item.id}'; render();"
-                      class="w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-xs font-bold transition ${state.tabActual === item.id ? 'bg-[#C6FF00] text-[#14071E] font-extrabold shadow-lg' : 'text-[#C9B6D9] hover:bg-[#231033] hover:text-white'}"
-                    >
-                      <span class="flex items-center gap-3">
-                        <span class="text-base">${item.icon}</span>
-                        <span>${item.label}</span>
-                      </span>
-                      <span class="px-2 py-0.5 rounded-md text-[10px] font-extrabold ${state.tabActual === item.id ? 'bg-[#14071E]/15 text-[#14071E]' : 'bg-[#231033] text-[#40C4FF]'}">
-                        ${item.badge}
-                      </span>
-                    </button>
-                  `).join('')}
+                  ${navItems.map(item => {
+                    const activo = state.tabActual === item.id;
+                    return `
+                      <button
+                        onclick="state.tabActual = '${item.id}'; render();"
+                        class="w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-xs font-bold transition ${activo ? 'bg-[#C6FF00] text-[#14071E] font-extrabold shadow-lg' : 'text-[#D6C7E3] hover:bg-[#1F0D30] hover:text-white'}"
+                      >
+                        <span class="flex items-center gap-3">
+                          ${item.icon}
+                          <span>${item.label}</span>
+                        </span>
+                        <span class="px-2 py-0.5 rounded-md text-[10px] font-extrabold mono ${activo ? 'bg-[#14071E]/15 text-[#14071E]' : 'bg-[#231033] text-[#40C4FF] border border-[#3d1e57]'}">
+                          ${item.badge}
+                        </span>
+                      </button>
+                    `;
+                  }).join('')}
                 </nav>
               </div>
 
-              <!-- Tarjeta de Estado de Conexión Multiplataforma -->
-              <div class="p-4 rounded-2xl bg-[#231033] border border-[#3d1e57] space-y-2">
+              <!-- Estado de Interoperabilidad Multiplataforma -->
+              <div class="p-4 rounded-2xl glass-card space-y-2.5">
                 <div class="flex items-center justify-between">
-                  <span class="text-xs font-extrabold text-[#C6FF00]">⚡ Red Nacional Cloud</span>
-                  <span class="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 text-[10px] font-bold">ACTIVO</span>
+                  <span class="text-[11px] font-extrabold uppercase tracking-wider text-[#C6FF00]">Estado del Clúster</span>
+                  <span class="px-2 py-0.5 rounded bg-emerald-950 border border-emerald-500/40 text-emerald-300 text-[10px] font-extrabold mono">ONLINE</span>
                 </div>
                 <p class="text-[11px] text-[#C9B6D9] leading-relaxed">
-                  Conectado en tiempo real con la base de datos PostgreSQL y el aplicativo móvil Android APK.
+                  Sincronización bidireccional activa con PostgreSQL Cloud y terminales Android APK.
                 </p>
-                <div class="pt-1 text-[11px] text-white/90 font-semibold border-t border-white/10">
-                  📍 ${s.sede}
+                <div class="pt-2 text-[11px] text-white/90 font-semibold border-t border-white/10 flex items-center gap-1.5">
+                  <span class="w-1.5 h-1.5 rounded-full bg-[#40C4FF]"></span>
+                  <span class="truncate">${s.sede}</span>
                 </div>
               </div>
             </div>
 
-            <!-- Mascota / Sello Institucional en el Sidebar -->
-            <div class="mt-6 p-3.5 rounded-2xl bg-gradient-to-br from-[#311747] to-[#160821] border border-[#5d2c85] flex items-center gap-3">
-              <img src="./mascota-reniec.png" alt="Mascota RENIEC" class="w-12 h-12 object-contain shrink-0" />
+            <!-- Sello Institucional Inferior -->
+            <div class="mt-6 p-3.5 rounded-2xl glass-card flex items-center gap-3">
+              <img src="./mascota-reniec.png" alt="Mascota RENIEC" class="w-11 h-11 object-contain shrink-0 drop-shadow" />
               <div class="min-w-0">
                 <div class="text-xs font-extrabold text-white truncate">RENIEC • UPeU</div>
-                <div class="text-[10px] text-[#C6FF00] font-semibold truncate">Cloudflare Pages Web</div>
+                <div class="text-[10px] text-[#C6FF00] font-semibold truncate mono">Cloudflare Edge Network</div>
               </div>
             </div>
           </aside>
 
           <!-- Contenedor Principal de Vistas -->
-          <div class="flex-1 flex flex-col min-w-0 bg-[#160821]">
+          <div class="flex-1 flex flex-col min-w-0 bg-[#11061B] grid-pattern">
             <main class="flex-1 p-4 sm:p-6 lg:p-8 max-w-[1600px] w-full mx-auto">
               ${state.tabActual === "inicio" ? renderInicio() : ""}
               ${state.tabActual === "padron" ? renderPadron() : ""}
@@ -2050,15 +2214,15 @@
               ${state.tabActual === "perfil" ? renderPerfil() : ""}
             </main>
 
-            <!-- Footer Institucional de Página Web -->
-            <footer class="border-t border-[#3d1e57] bg-[#12061c] px-6 py-4 text-xs text-[#C9B6D9] flex flex-col sm:flex-row items-center justify-between gap-2">
+            <!-- Footer Corporativo -->
+            <footer class="border-t border-[#3d1e57]/70 bg-[#0B0312] px-6 py-4 text-xs text-[#C9B6D9] flex flex-col sm:flex-row items-center justify-between gap-2">
               <div>
-                <b class="text-white">Portal Web Nacional RENIEC</b> • Sistema de Identificación y Registro Civil (DNIe 3.0)
+                <b class="text-white">Plataforma Nacional RENIEC Digital</b> • Sistema Integrado de Identificación y Estado Civil (DNIe 3.0)
               </div>
-              <div class="flex items-center gap-3 text-[11px]">
-                <span class="text-[#C6FF00] font-bold">Supabase Cloud PostgreSQL</span>
+              <div class="flex items-center gap-3 text-[11px] mono">
+                <span class="text-[#C6FF00] font-bold">Supabase PostgreSQL</span>
                 <span>•</span>
-                <span class="text-[#40C4FF] font-bold">Cloudflare Pages CDN</span>
+                <span class="text-[#40C4FF] font-bold">Cloudflare Pages</span>
                 <span>•</span>
                 <span>Android KMP Sync</span>
               </div>
@@ -2066,15 +2230,15 @@
           </div>
         </div>
 
-        <!-- Barra de Navegación Inferior (Solo para Móviles / Pantallas Pequeñas < lg) -->
-        <nav class="lg:hidden bg-[#231033] border-t border-[#3d1e57] px-2 py-2 grid grid-cols-5 gap-1 sticky bottom-0 z-30">
+        <!-- Barra de Navegación Inferior (Móviles < lg) -->
+        <nav class="lg:hidden bg-[#160821] border-t border-[#3d1e57] px-2 py-2 grid grid-cols-5 gap-1 sticky bottom-0 z-30">
           ${navItems.map(item => `
             <button
               onclick="state.tabActual = '${item.id}'; render();"
               class="flex flex-col items-center justify-center py-1.5 rounded-xl transition ${state.tabActual === item.id ? 'bg-[#C6FF00] text-[#14071E] font-extrabold' : 'text-[#C9B6D9] hover:text-white font-semibold'}"
             >
-              <span class="text-base">${item.icon}</span>
-              <span class="text-[11px] mt-0.5">${item.shortLabel}</span>
+              ${item.icon}
+              <span class="text-[10px] mt-1">${item.shortLabel}</span>
             </button>
           `).join('')}
         </nav>
